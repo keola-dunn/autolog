@@ -14,3 +14,6 @@ Autolog looks to fix this.
 Future State
 - A place to list cars for sale
 - A {INSERT NAME OF TERRIBLE CAR HISTORY SERVICE HERE} replacement
+- Reminders for service intervals 
+- Info on makes/models and maintenance 
+- Insurers would love this data...I'm sure there's a correlation between maintenance and responsibility that could be tracked here. 
