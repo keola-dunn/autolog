@@ -46,7 +46,9 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 		return 0, ErrInvalidArg
 	}
 
-	query := ``
+	query := `
+	INSERT INTO users(username, salt, password_hash, email)
+	VALUES ($1, $2, $3, $4)`
 
 	row := s.db.QueryRow(ctx, query)
 
