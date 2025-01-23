@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
 )
 
 var (
@@ -17,13 +19,6 @@ type CreateNewUserInput struct {
 	Username string
 	Email    string
 	Password string
-
-	// how much info do I want to collect from the get go? Probably as little as possible
-	ZipCode     string
-	PhoneNumber string
-	FirstName   string
-	LastName    string
-	Suffix      string
 }
 
 func (c *CreateNewUserInput) Valid() bool {
@@ -46,11 +41,15 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 		return 0, ErrInvalidArg
 	}
 
+	salt := s.randomGenerator.RandomString(s.saltLength)
+
+	passwordHash := argon2.IDKey([]byte(input.Password), []byte(salt), 1, 64*1024, 4, 32)
+
 	query := `
 	INSERT INTO users(username, salt, password_hash, email)
-	VALUES ($1, $2, $3, $4)`
+	VALUES ($1, $2, $3, $4) RETURNING id`
 
-	row := s.db.QueryRow(ctx, query)
+	row := s.db.QueryRow(ctx, query, input.Username, salt, passwordHash, input.Email)
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
