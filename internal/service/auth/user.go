@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -43,13 +45,13 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 
 	salt := s.randomGenerator.RandomString(s.saltLength)
 
-	passwordHash := argon2.IDKey([]byte(input.Password), []byte(salt), 1, 64*1024, 4, 32)
+	passwordHash := s.passwordHash(input.Password, salt)
 
 	query := `
 	INSERT INTO users(username, salt, password_hash, email)
 	VALUES ($1, $2, $3, $4) RETURNING id`
 
-	row := s.db.QueryRow(ctx, query, input.Username, salt, passwordHash, input.Email)
+	row := s.db.QueryRow(ctx, query, input.Username, salt, string(passwordHash), input.Email)
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
@@ -57,4 +59,41 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 	}
 
 	return id, nil
+}
+
+func (s *Service) passwordHash(password, salt string) []byte {
+	return argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
+}
+
+func (s *Service) ValidCredentials(ctx context.Context, user, password string) (bool, error) {
+	if s.db == nil {
+		return false, ErrMissingRequiredConfiguration
+	}
+
+	if strings.TrimSpace(user) == "" || strings.TrimSpace(password) == "" {
+		return false, ErrInvalidArg
+	}
+
+	query := `
+	SELECT 
+		u.salt, 
+		u.password_hash
+	FROM users u
+	WHERE u.username = $1 OR u.email = $1`
+
+	row := s.db.QueryRow(ctx, query, user)
+
+	var salt string
+	var storedPasswordHash string
+	if err := row.Scan(&salt, &storedPasswordHash); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to query for valid user credentials: %w", err)
+	}
+
+	providedHash := s.passwordHash(password, salt)
+
+	return bytes.Equal(providedHash, []byte(storedPasswordHash)), nil
 }

@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
     id serial NOT NULL PRIMARY KEY,
-    username text UNIQUE,
+    username text UNIQUE, 
     salt text, 
     password_hash text,
     email text UNIQUE,
