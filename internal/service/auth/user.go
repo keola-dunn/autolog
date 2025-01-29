@@ -57,7 +57,7 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 	if err := row.Scan(&id); err != nil {
 		return 0, fmt.Errorf("failed to exec create new user query: %w", err)
 	}
-
+	// TODO: figure out the error when a unique constraint on username or email is violated
 	return id, nil
 }
 
