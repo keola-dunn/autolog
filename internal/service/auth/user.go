@@ -65,6 +65,9 @@ func (s *Service) passwordHash(password, salt string) []byte {
 	return argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
 }
 
+// ValidCredentials will check the provided credentials against the database. This
+// is meant to be used as a login method. Returns
+// true if the credentials are good, false otherwise, and an error.
 func (s *Service) ValidCredentials(ctx context.Context, user, password string) (bool, error) {
 	if s.db == nil {
 		return false, ErrMissingRequiredConfiguration

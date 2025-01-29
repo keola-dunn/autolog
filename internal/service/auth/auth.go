@@ -6,8 +6,15 @@ import (
 )
 
 type ServiceConfig struct {
-	DB              postgres.ConnectionPool
+	// DB is the Database used for the auth service
+	DB postgres.ConnectionPool
+
+	// RandomGenerator is used to generate random values within the auth service.
 	RandomGenerator random.ServiceIface
+
+	// SaltLength sets the length of the password salts generated for the auth service.
+	// Defaults to 8.
+	SaltLength int64
 }
 
 type Service struct {
@@ -21,9 +28,13 @@ func NewService(cfg ServiceConfig) *Service {
 		cfg.RandomGenerator = random.NewService()
 	}
 
+	if cfg.SaltLength <= 0 {
+		cfg.SaltLength = 8
+	}
+
 	return &Service{
 		db:              cfg.DB,
 		randomGenerator: cfg.RandomGenerator,
-		saltLength:      8,
+		saltLength:      cfg.SaltLength,
 	}
 }

@@ -12,12 +12,10 @@ import (
 
 type ConnectionPool interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
-	Close()
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 	Ping(context.Context) error
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
-	Stat() *pgxpool.Stat
 }
 
 type ConnectionConfig struct {
