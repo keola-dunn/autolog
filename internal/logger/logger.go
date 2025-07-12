@@ -7,16 +7,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/keola-dunn/autolog/internal/random"
 )
 
 type Logger struct {
 	*slog.Logger
+
+	randomGenerator random.ServiceIface
 }
 
 func NewLogger() *Logger {
 	return &Logger{
-		Logger: slog.New(slog.NewJSONHandler(os.Stdout, nil)),
+		Logger:          slog.New(slog.NewJSONHandler(os.Stdout, nil)),
+		randomGenerator: random.NewService(),
 	}
 }
 
@@ -36,8 +39,7 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 
 		if strings.TrimSpace(xReqId) == "" {
 			// client did not send x-request-id, keep it in the logs
-			xReqIdUUID, _ := uuid.NewUUID() // google UUID
-			xReqId = xReqIdUUID.String()
+			xReqId, _ = l.randomGenerator.RandomUUID()
 		}
 
 		logEntry := l.Logger.With("path", r.URL.Path, "method", r.Method, "requestId", xReqId)
