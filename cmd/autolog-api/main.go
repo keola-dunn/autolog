@@ -5,7 +5,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/keola-dunn/autolog/cmd/autolog-api/handler"
+	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
+	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/signup"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,9 +23,11 @@ func main() {
 		logger.WithError(err).Fatal("failed to process environment config")
 	}
 
-	h := handler.NewHandler(handler.HandlerConfig{})
+	authHandler := auth.NewAuthHandler()
 
-	router := newRouter(h)
+	signupHandler := signup.NewSignupHandler()
+
+	router := newRouter(authHandler, signupHandler)
 
 	server := http.Server{
 		Handler: router,
@@ -34,11 +37,27 @@ func main() {
 	server.ListenAndServe()
 }
 
-func newRouter(h *handler.Handler) *chi.Mux {
+func home(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Autolog API!"))
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("healthy!"))
+}
+
+func newRouter(authHandler *auth.AuthHandler, signupHandler *signup.SignupHandler) *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/", h.Home)
-	router.Get("/health", h.HealthCheck)
+	router.Get("/", home)
+	router.Get("/health", healthCheck)
+
+	router.Route("/v1", func(router chi.Router) {
+		router.Route("/auth", func(router chi.Router) {
+			router.Post("/login", authHandler.Login)
+		})
+
+		router.Post("/signup", signupHandler.SignUp)
+	})
 
 	return router
 }
