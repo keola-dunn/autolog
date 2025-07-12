@@ -7,27 +7,24 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/signup"
-	"github.com/sirupsen/logrus"
+	"github.com/keola-dunn/autolog/internal/logger"
 )
 
 var environmentConfig struct {
 }
 
 func main() {
-	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
-
-	logger.Info("Hello, world!")
+	logger := logger.NewLogger()
 
 	if err := envconfig.Process("", &environmentConfig); err != nil {
-		logger.WithError(err).Fatal("failed to process environment config")
+		logger.Fatal("failed to process environment config", err)
 	}
 
 	authHandler := auth.NewAuthHandler()
 
 	signupHandler := signup.NewSignupHandler()
 
-	router := newRouter(authHandler, signupHandler)
+	router := newRouter(logger, authHandler, signupHandler)
 
 	server := http.Server{
 		Handler: router,
@@ -45,8 +42,10 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("healthy!"))
 }
 
-func newRouter(authHandler *auth.AuthHandler, signupHandler *signup.SignupHandler) *chi.Mux {
+func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, signupHandler *signup.SignupHandler) *chi.Mux {
 	router := chi.NewRouter()
+
+	router.With(logger.RequestLogger)
 
 	router.Get("/", home)
 	router.Get("/health", healthCheck)
