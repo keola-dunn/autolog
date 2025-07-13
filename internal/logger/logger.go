@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -32,6 +33,13 @@ func (l *Logger) Fatal(message string, err error) {
 	os.Exit(1)
 }
 
+// contextKey is a type used as a key to set values in contexts
+type contextKey string
+
+const (
+	contextKeyRequestId = contextKey("requestId")
+)
+
 func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now().UTC()
@@ -41,6 +49,9 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 			// client did not send x-request-id, keep it in the logs
 			xReqId, _ = l.randomGenerator.RandomUUID()
 		}
+
+		// attach requestId to context for access in downstream entities
+		r = r.WithContext(context.WithValue(r.Context(), contextKeyRequestId, xReqId))
 
 		logEntry := l.Logger.With("path", r.URL.Path, "method", r.Method, "requestId", xReqId)
 		logEntry.Info("request received")
@@ -53,4 +64,8 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 		)
 
 	})
+}
+
+func GetRequestId(ctx context.Context) string {
+	return ctx.Value(contextKeyRequestId).(string)
 }
