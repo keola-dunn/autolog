@@ -40,6 +40,16 @@ const (
 	contextKeyRequestId = contextKey("requestId")
 )
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
 func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now().UTC()
@@ -50,17 +60,22 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 			xReqId, _ = l.randomGenerator.RandomUUID()
 		}
 
+		lrw := &loggingResponseWriter{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
+
 		// attach requestId to context for access in downstream entities
 		r = r.WithContext(context.WithValue(r.Context(), contextKeyRequestId, xReqId))
 
 		logEntry := l.Logger.With("path", r.URL.Path, "method", r.Method, "requestId", xReqId)
 		logEntry.Info("request received")
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(lrw, r)
 
 		logEntry.Info("request finished!",
-			"durationMs", time.Since(start),
-			"statusCode", r.Response.StatusCode,
+			"durationMs", time.Since(start).Milliseconds(),
+			"statusCode", lrw.statusCode,
 		)
 
 	})
