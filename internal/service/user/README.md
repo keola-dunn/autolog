@@ -1,5 +1,5 @@
-# auth
-This is the service responsible for user authentication and authorization
+# user
+This is the service responsible for user details 
 
 ## TODO: 
 Following excerpt is from [Auth0](https://auth0.com/blog/adding-salt-to-hashing-a-better-way-to-store-passwords/).

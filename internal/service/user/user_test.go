@@ -1,4 +1,4 @@
-package auth_test
+package user_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/keola-dunn/autolog/internal/random"
-	"github.com/keola-dunn/autolog/internal/service/auth"
+	"github.com/keola-dunn/autolog/internal/service/user"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func (f *fakeRandomService) RandomString(_ int64) string {
 func TestCreateNewUser(t *testing.T) {
 	tests := []struct {
 		name  string
-		input auth.CreateNewUserInput
+		input user.CreateNewUserInput
 
 		expectedQuery     string
 		expectedQueryArgs []interface{}
@@ -36,17 +36,17 @@ func TestCreateNewUser(t *testing.T) {
 	}{
 		{
 			name:              "InvalidArg",
-			input:             auth.CreateNewUserInput{},
+			input:             user.CreateNewUserInput{},
 			expectedQuery:     "",
 			expectedQueryArgs: nil,
 			fakeQueryRows:     nil,
 			fakeQueryErr:      nil,
 			expectedUserId:    0,
-			expectedErr:       auth.ErrInvalidArg,
+			expectedErr:       user.ErrInvalidArg,
 		},
 		{
 			name: "DbError",
-			input: auth.CreateNewUserInput{
+			input: user.CreateNewUserInput{
 				Username: "TestUsername",
 				Email:    "TestEmail",
 				Password: "TestPassword",
@@ -64,7 +64,7 @@ func TestCreateNewUser(t *testing.T) {
 		},
 		{
 			name: "Success",
-			input: auth.CreateNewUserInput{
+			input: user.CreateNewUserInput{
 				Username: "TestUsername",
 				Email:    "TestEmail",
 				Password: "TestPassword",
@@ -97,7 +97,7 @@ func TestCreateNewUser(t *testing.T) {
 				WillReturnRows(test.fakeQueryRows).
 				WillReturnError(test.fakeQueryErr)
 
-			service := auth.NewService(auth.ServiceConfig{
+			service := user.NewService(user.ServiceConfig{
 				DB:              db,
 				RandomGenerator: &fakeRandomService{},
 			})
@@ -134,7 +134,7 @@ func TestValidateCredentials(t *testing.T) {
 			fakeQueryRows:     nil,
 			fakeQueryErr:      nil,
 			expectedValid:     false,
-			expectedErr:       auth.ErrInvalidArg,
+			expectedErr:       user.ErrInvalidArg,
 		},
 		{
 			name:              "DbError",
@@ -203,7 +203,7 @@ func TestValidateCredentials(t *testing.T) {
 				WillReturnRows(test.fakeQueryRows).
 				WillReturnError(test.fakeQueryErr)
 
-			service := auth.NewService(auth.ServiceConfig{
+			service := user.NewService(user.ServiceConfig{
 				DB:              db,
 				RandomGenerator: &fakeRandomService{},
 			})
