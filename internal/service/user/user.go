@@ -33,7 +33,7 @@ type ServiceConfig struct {
 
 type ServiceIface interface {
 	CreateNewUser(context.Context, CreateNewUserInput) (int64, error)
-	ValidCredentials(ctx context.Context, user, password string) (bool, error)
+	ValidateCredentials(ctx context.Context, user, password string) (bool, string, error)
 }
 
 type Service struct {
@@ -106,20 +106,22 @@ func (s *Service) passwordHash(password, salt string) []byte {
 	return argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
 }
 
-// ValidCredentials will check the provided credentials against the database. This
+// ValidateCredentials will check the provided credentials against the database. This
 // is meant to be used as a login method. Returns
-// true if the credentials are good, false otherwise, and an error.
-func (s *Service) ValidCredentials(ctx context.Context, user, password string) (bool, error) {
+// true if the credentials are good, false otherwise, the user id
+// (if valid) and an error.
+func (s *Service) ValidateCredentials(ctx context.Context, user, password string) (bool, string, error) {
 	if s.db == nil {
-		return false, ErrMissingRequiredConfiguration
+		return false, "", ErrMissingRequiredConfiguration
 	}
 
 	if strings.TrimSpace(user) == "" || strings.TrimSpace(password) == "" {
-		return false, ErrInvalidArg
+		return false, "", ErrInvalidArg
 	}
 
 	query := `
 	SELECT 
+		u.id,
 		u.salt, 
 		u.password_hash
 	FROM users u
@@ -127,17 +129,21 @@ func (s *Service) ValidCredentials(ctx context.Context, user, password string) (
 
 	row := s.db.QueryRow(ctx, query, user)
 
+	var userId string
 	var salt string
 	var storedPasswordHash string
-	if err := row.Scan(&salt, &storedPasswordHash); err != nil {
+	if err := row.Scan(&userId, &salt, &storedPasswordHash); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
+			return false, "", nil
 		}
 
-		return false, fmt.Errorf("failed to query for valid user credentials: %w", err)
+		return false, "", fmt.Errorf("failed to query for valid user credentials: %w", err)
 	}
 
 	providedHash := s.passwordHash(password, salt)
+	if bytes.Equal(providedHash, []byte(storedPasswordHash)) {
+		return true, userId, nil
+	}
 
-	return bytes.Equal(providedHash, []byte(storedPasswordHash)), nil
+	return false, "", nil
 }

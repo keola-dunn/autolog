@@ -14,8 +14,11 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/signup"
+	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
+	"github.com/keola-dunn/autolog/internal/random"
+	"github.com/keola-dunn/autolog/internal/service/user"
 )
 
 var environmentConfig struct {
@@ -37,6 +40,9 @@ func main() {
 		logger.Fatal("failed to process environment config", err)
 	}
 
+	///////////////////////////////////////
+	// Platform and Foundational configs //
+	///////////////////////////////////////
 	logger.Info("connecting to the database...")
 	db, err := postgres.NewConnectionPool(context.Background(), postgres.ConnectionPoolConfig{
 		ConnectionConfig: postgres.ConnectionConfig{User: environmentConfig.DBUser,
@@ -54,12 +60,41 @@ func main() {
 	defer db.Close()
 	logger.Info("successfully connected to the database!")
 
-	authHandler := auth.NewAuthHandler()
+	randomSvc := random.NewService()
+
+	calendarSvc := calendar.NewService()
+
+	///////////////////////
+	// Service Creations //
+	///////////////////////
+
+	userSvc := user.NewService(user.ServiceConfig{
+		DB:              db,
+		RandomGenerator: randomSvc,
+	})
+
+	///////////////////////////
+	// API Handler Creations //
+	///////////////////////////
+
+	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
+		JWTSecret:              "",
+		JWTIssuer:              "",
+		JWTExpiryLengthMinutes: 1,
+		CalendarService:        calendarSvc,
+		RandomGenerator:        randomSvc,
+		Logger:                 logger,
+		UserService:            userSvc,
+	})
 
 	signupHandler := signup.NewSignupHandler()
 
+	// create router using handlers
 	router := newRouter(logger, authHandler, signupHandler)
 
+	/////////////////////////////
+	// Server config and start //
+	/////////////////////////////
 	server := http.Server{
 		Handler: router,
 		Addr:    ":8080",

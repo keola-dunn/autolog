@@ -2,11 +2,13 @@ package auth
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/httputil"
 )
+
+type LoginResponse struct {
+	JWT string `json:"jwt"`
+}
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -16,41 +18,25 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid, err := h.userService.ValidCredentials(ctx, user, pass)
+	valid, userId, err := h.userService.ValidateCredentials(ctx, user, pass)
 	if err != nil {
+		h.logger.Error("failed to validate credentials", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
 	if !valid {
 		httputil.RespondWithError(w, http.StatusUnauthorized, "")
+		return
 	}
 
-	claims := jwt.RegisteredClaims{
-		Issuer:    "",
-		Subject:   "",
-		Audience:  jwt.ClaimStrings{},
-		ExpiresAt: jwt.NewNumericDate(time.Now()),
-		NotBefore: jwt.NewNumericDate(time.Now()),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ID:        "",
-	}
-
-	type myCustomClaims struct {
-		CustomClaim string
-		jwt.RegisteredClaims
-	}
-
-	myClaims := myCustomClaims{
-		CustomClaim:      "",
-		RegisteredClaims: claims,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, myClaims)
-
-	jwtToken, err := token.SignedString(h.jwtSecret)
+	jwtToken, err := h.createJWT(userId)
 	if err != nil {
-
+		h.logger.Error("failed to create jwt", err)
+		httputil.RespondWithError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	w.Write([]byte(jwtToken))
+	httputil.RespondWithJSON(w, http.StatusOK, LoginResponse{
+		JWT: jwtToken,
+	})
 }

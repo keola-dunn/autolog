@@ -1,6 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
-    id serial NOT NULL PRIMARY KEY,
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    simple_id serial NOT NULL,
     username text UNIQUE, 
     salt text, 
     password_hash text,

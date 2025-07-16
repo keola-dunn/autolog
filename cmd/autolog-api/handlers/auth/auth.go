@@ -1,12 +1,51 @@
 package auth
 
-import "github.com/keola-dunn/autolog/internal/service/user"
+import (
+	"github.com/keola-dunn/autolog/internal/calendar"
+	"github.com/keola-dunn/autolog/internal/logger"
+	"github.com/keola-dunn/autolog/internal/random"
+	"github.com/keola-dunn/autolog/internal/service/user"
+)
 
 type AuthHandler struct {
-	jwtSecret   string
+	// configs
+	jwtSecret              string
+	jwtIssuer              string
+	jwtExpiryLengthMinutes int64
+
+	// foundationals/platform
+	calendarService calendar.ServiceIface
+	randomGenerator random.ServiceIface
+	logger          *logger.Logger
+
+	// services
 	userService user.ServiceIface
 }
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+type AuthHandlerConfig struct {
+	JWTSecret              string
+	JWTIssuer              string
+	JWTExpiryLengthMinutes int64
+
+	// foundationals/platform
+	CalendarService calendar.ServiceIface
+	RandomGenerator random.ServiceIface
+	Logger          *logger.Logger
+
+	// services
+	UserService user.ServiceIface
+}
+
+func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
+	return &AuthHandler{
+		jwtSecret:              config.JWTSecret,
+		jwtIssuer:              config.JWTIssuer,
+		jwtExpiryLengthMinutes: config.JWTExpiryLengthMinutes,
+
+		calendarService: config.CalendarService,
+		randomGenerator: config.RandomGenerator,
+		logger:          config.Logger,
+
+		userService: config.UserService,
+	}
 }

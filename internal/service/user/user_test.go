@@ -122,8 +122,9 @@ func TestValidateCredentials(t *testing.T) {
 		fakeQueryRows     *pgxmock.Rows
 		fakeQueryErr      error
 
-		expectedValid bool
-		expectedErr   error
+		expectedValid  bool
+		expectedUserId string
+		expectedErr    error
 	}{
 		{
 			name:              "InvalidArg",
@@ -140,7 +141,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:              "DbError",
 			user:              "Username",
 			password:          "Password",
-			expectedQuery:     "SELECT u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
+			expectedQuery:     "SELECT u.id, u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
 			expectedQueryArgs: []interface{}{"Username"},
 			fakeQueryRows:     pgxmock.NewRows(nil),
 			fakeQueryErr:      errors.New("fake db error"),
@@ -151,7 +152,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:              "NoRows",
 			user:              "Username",
 			password:          "Password",
-			expectedQuery:     "SELECT u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
+			expectedQuery:     "SELECT u.id, u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
 			expectedQueryArgs: []interface{}{"Username"},
 			fakeQueryRows:     pgxmock.NewRows(nil),
 			fakeQueryErr:      pgx.ErrNoRows,
@@ -162,31 +163,35 @@ func TestValidateCredentials(t *testing.T) {
 			name:              "Invalid",
 			user:              "Username",
 			password:          "Password",
-			expectedQuery:     "SELECT u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
+			expectedQuery:     "SELECT u.id, u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
 			expectedQueryArgs: []interface{}{"Username"},
-			fakeQueryRows: pgxmock.NewRows([]string{"salt", "password_hash"}).AddRows(
+			fakeQueryRows: pgxmock.NewRows([]string{"id", "salt", "password_hash"}).AddRows(
 				[]interface{}{
+					"UserID",
 					"fakerandomstring",
 					string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175})},
 			),
-			fakeQueryErr:  nil,
-			expectedValid: false,
-			expectedErr:   nil,
+			fakeQueryErr:   nil,
+			expectedValid:  false,
+			expectedUserId: "",
+			expectedErr:    nil,
 		},
 		{
 			name:              "ValidCredentials",
 			user:              "Username",
 			password:          "TestPassword",
-			expectedQuery:     "SELECT u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
+			expectedQuery:     "SELECT u.id, u.salt, u.password_hash FROM users u WHERE u.username = $1 OR u.email = $1",
 			expectedQueryArgs: []interface{}{"Username"},
-			fakeQueryRows: pgxmock.NewRows([]string{"salt", "password_hash"}).AddRows(
+			fakeQueryRows: pgxmock.NewRows([]string{"id", "salt", "password_hash"}).AddRows(
 				[]interface{}{
+					"UserID",
 					"fakerandomstring",
 					string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175})},
 			),
-			fakeQueryErr:  nil,
-			expectedValid: true,
-			expectedErr:   nil,
+			fakeQueryErr:   nil,
+			expectedValid:  true,
+			expectedUserId: "UserID",
+			expectedErr:    nil,
 		},
 	}
 
@@ -208,11 +213,12 @@ func TestValidateCredentials(t *testing.T) {
 				RandomGenerator: &fakeRandomService{},
 			})
 
-			valid, err := service.ValidCredentials(context.TODO(), test.user, test.password)
+			valid, userId, err := service.ValidateCredentials(context.TODO(), test.user, test.password)
 			if err != test.expectedErr && (err == nil || test.expectedErr == nil || err.Error() != test.expectedErr.Error()) {
 				t.Errorf("expected error:\n%v\ndoes not match actual:\n%v", test.expectedErr, err)
 			}
 			require.Equal(t, test.expectedValid, valid, "validComparison")
+			require.Equal(t, test.expectedUserId, userId, "userIdComparison")
 		})
 	}
 }
