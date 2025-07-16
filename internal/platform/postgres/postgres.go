@@ -44,11 +44,27 @@ type ConnectionPoolConfig struct {
 }
 
 func (c *ConnectionConfig) connectionString() string {
-	if strings.TrimSpace(c.SSLMode) == "" {
-		c.SSLMode = "verify-ca"
+	// if strings.TrimSpace(c.SSLMode) == "" {
+	// 	c.SSLMode = "verify-ca"
+	// }
+
+	var connStr strings.Builder
+	connStr.WriteString(fmt.Sprintf("user=%s password=%s host=%s port=%d sslmode=%s",
+		c.User, c.Password, c.Host, c.Port, c.SSLMode))
+
+	if strings.TrimSpace(c.SSLMode) != "" {
+		connStr.WriteString(fmt.Sprintf(" sslmode=%s", c.SSLMode))
 	}
-	return fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=%s search_path=%s",
-		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode, c.Schema)
+
+	if strings.TrimSpace(c.DBName) != "" {
+		connStr.WriteString(fmt.Sprintf(" dbname=%s", c.DBName))
+	}
+
+	if strings.TrimSpace(c.Schema) != "" {
+		connStr.WriteString(fmt.Sprintf(" search_path=%s", c.Schema))
+	}
+
+	return connStr.String()
 }
 
 func NewConnectionPool(ctx context.Context, cfg ConnectionPoolConfig) (*pgxpool.Pool, error) {

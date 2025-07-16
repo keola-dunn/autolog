@@ -32,7 +32,7 @@ type ServiceConfig struct {
 }
 
 type ServiceIface interface {
-	CreateNewUser(context.Context, CreateNewUserInput) (int64, error)
+	CreateNewUser(context.Context, CreateNewUserInput) (string, error)
 	ValidateCredentials(ctx context.Context, user, password string) (bool, string, error)
 }
 
@@ -75,13 +75,13 @@ func (c *CreateNewUserInput) Valid() bool {
 
 // CreateNewUser creates a new user in the Auth service
 // Takes a context and CreateNewUserInput as the inputs, returns UserID and an error as the output
-func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (int64, error) {
+func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (string, error) {
 	if s.db == nil {
-		return 0, ErrMissingRequiredConfiguration
+		return "", ErrMissingRequiredConfiguration
 	}
 
 	if !input.Valid() {
-		return 0, ErrInvalidArg
+		return "", ErrInvalidArg
 	}
 
 	salt := s.randomGenerator.RandomString(s.saltLength)
@@ -94,9 +94,9 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 
 	row := s.db.QueryRow(ctx, query, input.Username, salt, string(passwordHash), input.Email)
 
-	var id int64
+	var id string
 	if err := row.Scan(&id); err != nil {
-		return 0, fmt.Errorf("failed to exec create new user query: %w", err)
+		return "", fmt.Errorf("failed to exec create new user query: %w", err)
 	}
 	// TODO: figure out the error when a unique constraint on username or email is violated
 	return id, nil

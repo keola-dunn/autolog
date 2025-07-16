@@ -31,7 +31,7 @@ func TestCreateNewUser(t *testing.T) {
 		fakeQueryRows     *pgxmock.Rows
 		fakeQueryErr      error
 
-		expectedUserId int64
+		expectedUserId string
 		expectedErr    error
 	}{
 		{
@@ -41,7 +41,7 @@ func TestCreateNewUser(t *testing.T) {
 			expectedQueryArgs: nil,
 			fakeQueryRows:     nil,
 			fakeQueryErr:      nil,
-			expectedUserId:    0,
+			expectedUserId:    "",
 			expectedErr:       user.ErrInvalidArg,
 		},
 		{
@@ -59,7 +59,7 @@ func TestCreateNewUser(t *testing.T) {
 				"TestEmail"},
 			fakeQueryRows:  pgxmock.NewRows(nil),
 			fakeQueryErr:   errors.New("fake db error"),
-			expectedUserId: 0,
+			expectedUserId: "",
 			expectedErr:    errors.New("failed to exec create new user query: fake db error"),
 		},
 		{
@@ -77,9 +77,9 @@ func TestCreateNewUser(t *testing.T) {
 				"TestEmail"},
 			fakeQueryRows: pgxmock.NewRows([]string{
 				"id",
-			}).AddRow(int64(1001)),
+			}).AddRow("UserID"),
 			fakeQueryErr:   nil,
-			expectedUserId: 1001,
+			expectedUserId: "UserID",
 			expectedErr:    nil,
 		},
 	}

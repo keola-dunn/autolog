@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
-	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/signup"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
@@ -26,6 +25,8 @@ var environmentConfig struct {
 	DBPassword string `envconfig:"DB_PASSWORD"`
 	DBHost     string `envconfig:"DB_HOST"`
 	DBPort     int64  `envconfig:"DB_PORT"`
+
+	JWTSecret string `envconfig:"JWT_SECRET"`
 }
 
 func main() {
@@ -78,7 +79,7 @@ func main() {
 	///////////////////////////
 
 	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
-		JWTSecret:              "",
+		JWTSecret:              environmentConfig.JWTSecret,
 		JWTIssuer:              "",
 		JWTExpiryLengthMinutes: 1,
 		CalendarService:        calendarSvc,
@@ -87,10 +88,8 @@ func main() {
 		UserService:            userSvc,
 	})
 
-	signupHandler := signup.NewSignupHandler()
-
 	// create router using handlers
-	router := newRouter(logger, authHandler, signupHandler)
+	router := newRouter(logger, authHandler)
 
 	/////////////////////////////
 	// Server config and start //
@@ -130,7 +129,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("healthy!"))
 }
 
-func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, signupHandler *signup.SignupHandler) *chi.Mux {
+func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(logger.RequestLogger)
@@ -141,9 +140,8 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, signupHandl
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/auth", func(router chi.Router) {
 			router.Post("/login", authHandler.Login)
+			router.Post("/signup", authHandler.SignUp)
 		})
-
-		router.Post("/signup", signupHandler.SignUp)
 	})
 
 	return router
