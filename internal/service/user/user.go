@@ -35,7 +35,7 @@ type ServiceIface interface {
 	CreateNewUser(context.Context, CreateNewUserInput) (string, error)
 	ValidateCredentials(ctx context.Context, user, password string) (bool, string, error)
 
-	GetQuestions(context.Context) ([]Question, error)
+	GetSecurityQuestions(context.Context) ([]SecurityQuestion, error)
 	CreateUserSecurityQuestions(ctx context.Context, userId string, questions []UserSecurityQuestion) error
 }
 

@@ -18,6 +18,7 @@ func RespondWithError(w http.ResponseWriter, statusCode int, errorMessage string
 		StatusCode:   statusCode,
 		ErrorMessage: errorMessage,
 	})
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	w.Write(data)
 }
@@ -27,6 +28,7 @@ func RespondWithJSON(w http.ResponseWriter, statusCode int, responseBody any) er
 	if err != nil {
 		return fmt.Errorf("failed to marshal response body as expected: %w", err)
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if _, err := w.Write(data); err != nil {
 		return fmt.Errorf("failed to write response body: %w", err)

@@ -7,19 +7,19 @@ import (
 	"time"
 )
 
-type Question struct {
+type SecurityQuestion struct {
 	Id        string
 	Question  string
 	CreatedAt time.Time
 }
 
-func (s *Service) GetQuestions(ctx context.Context) ([]Question, error) {
+func (s *Service) GetSecurityQuestions(ctx context.Context) ([]SecurityQuestion, error) {
 	query := `
 	SELECT 
 		id,
     	question,
     	created_at
-	FROM questions`
+	FROM security_questions`
 
 	rows, err := s.db.Query(ctx, query)
 	if err != nil {
@@ -27,10 +27,10 @@ func (s *Service) GetQuestions(ctx context.Context) ([]Question, error) {
 	}
 	defer rows.Close()
 
-	var questions = []Question{}
+	var questions = []SecurityQuestion{}
 
 	for rows.Next() {
-		var q Question
+		var q SecurityQuestion
 
 		if err := rows.Scan(
 			&q.Id,

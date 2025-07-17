@@ -141,6 +141,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 		router.Route("/auth", func(router chi.Router) {
 			router.Post("/login", authHandler.Login)
 			router.Post("/signup", authHandler.SignUp)
+			router.Get("/security-questions", authHandler.GetSecurityQuestions)
 		})
 	})
 
