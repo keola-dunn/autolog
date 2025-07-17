@@ -70,7 +70,9 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := a.userService.CreateNewUser(r.Context(), user.CreateNewUserInput{
+	ctx := r.Context()
+
+	userId, err := a.userService.CreateNewUser(ctx, user.CreateNewUserInput{
 		Username: reqBody.Username,
 		Email:    reqBody.Email,
 		Password: reqBody.Password,
@@ -78,6 +80,20 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// TODO: handle if username or email already exists
 		a.logger.Error("failed to create new user", err)
+		httputil.RespondWithError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	var secQuestions = make([]user.UserSecurityQuestion, 0, len(reqBody.Questions))
+	for _, q := range reqBody.Questions {
+		secQuestions = append(secQuestions, user.UserSecurityQuestion{
+			QuestionId: q.QuestionId,
+			Answer:     q.Answer,
+		})
+	}
+
+	if err := a.userService.CreateUserSecurityQuestions(ctx, userId, secQuestions); err != nil {
+		a.logger.Error("failed to create user security questions", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
