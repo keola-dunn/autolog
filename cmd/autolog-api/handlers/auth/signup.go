@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
@@ -11,14 +12,32 @@ import (
 )
 
 type signUpRequestBody struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Username  string            `json:"username"`
+	Email     string            `json:"email"`
+	Password  string            `json:"password"`
+	Name      string            `json:"name"`
+	Questions []signupQuestions `json:"questions"`
 }
 
-func (s *signUpRequestBody) valid() bool {
-	return true
+type signupQuestions struct {
+	QuestionId string `json:"questionId"`
+	Answer     string `json:"answer"`
+}
+
+func (s *signUpRequestBody) valid() (bool, string) {
+	if _, err := mail.ParseAddress(s.Email); err != nil {
+		return false, "email address is invalid"
+	}
+	if strings.TrimSpace(s.Username) == "" || len(s.Username) > 64 {
+		return false, "username is missing or invalid"
+	}
+	if strings.TrimSpace(s.Password) == "" || len(s.Password) < 3 {
+		return false, "missing or too short password"
+	}
+	if len(s.Questions) < 3 {
+		return false, "missing security questions"
+	}
+	return true, ""
 }
 
 type signUpResponse struct {
@@ -46,8 +65,8 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !reqBody.valid() {
-		httputil.RespondWithError(w, http.StatusBadRequest, "")
+	if valid, validationErr := reqBody.valid(); !valid {
+		httputil.RespondWithError(w, http.StatusBadRequest, validationErr)
 		return
 	}
 

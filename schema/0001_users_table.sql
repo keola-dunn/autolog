@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     simple_id serial NOT NULL,
-    username varchar(128) UNIQUE, 
+    username varchar(64) UNIQUE, 
     salt text, 
     password_hash text,
     email varchar(256) UNIQUE, --email addresses should be limited to 254 or so

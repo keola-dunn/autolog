@@ -17,7 +17,7 @@ INSERT INTO security_questions (question) VALUES
 CREATE TABLE IF NOT EXISTS users_security_questions (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id uuid NOT NULL, 
-    question_id uuid NOT NULL,
+    question_id uuid NOT NULL references security_questions(id),
     answer_hash text NOT NULL,
     salt text,
     created_at timestamptz
