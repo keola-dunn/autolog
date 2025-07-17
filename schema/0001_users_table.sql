@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash text,
     email varchar(256) UNIQUE, --email addresses should be limited to 254 or so
     name text DEFAULT '',
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW()
+    created_at timestamptz DEFAULT NOW(),
+    updated_at timestamptz DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username_email ON users(username, email);
