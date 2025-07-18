@@ -16,7 +16,7 @@ type signUpRequestBody struct {
 	Email     string            `json:"email"`
 	Password  string            `json:"password"`
 	Name      string            `json:"name"`
-	Questions []signupQuestions `json:"questions"`
+	Questions []signupQuestions `json:"securityQuestions"`
 }
 
 type signupQuestions struct {
@@ -69,18 +69,22 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		httputil.RespondWithError(w, http.StatusBadRequest, validationErr)
 		return
 	}
-
 	ctx := r.Context()
 
-	userId, err := a.userService.CreateNewUser(ctx, user.CreateNewUserInput{
-		Username: reqBody.Username,
-		Email:    reqBody.Email,
-		Password: reqBody.Password,
-	})
+	usernameExists, emailExists, err := a.userService.DoesUsernameOrEmailExist(ctx, reqBody.Username, reqBody.Email)
 	if err != nil {
-		// TODO: handle if username or email already exists
-		a.logger.Error("failed to create new user", err)
+		a.logger.Error("failed to check if username or email exists", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if usernameExists {
+		httputil.RespondWithError(w, http.StatusConflict, "username already exists!")
+		return
+	}
+
+	if emailExists {
+		httputil.RespondWithError(w, http.StatusConflict, "email already exists!")
 		return
 	}
 
@@ -92,8 +96,15 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if err := a.userService.CreateUserSecurityQuestions(ctx, userId, secQuestions); err != nil {
-		a.logger.Error("failed to create user security questions", err)
+	userId, err := a.userService.CreateNewUser(ctx, user.CreateNewUserInput{
+		Username:          reqBody.Username,
+		Email:             reqBody.Email,
+		Password:          reqBody.Password,
+		SecurityQuestions: secQuestions,
+	})
+	if err != nil {
+		// TODO: handle if username or email already exists
+		a.logger.Error("failed to create new user", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}

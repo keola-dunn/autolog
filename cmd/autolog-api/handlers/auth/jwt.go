@@ -35,7 +35,7 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, myClaims)
 
-	jwtToken, err := token.SignedString(h.jwtSecret)
+	jwtToken, err := token.SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign jwt: %w", err)
 	}

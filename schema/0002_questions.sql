@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS users_security_questions (
     created_at timestamptz
 );
 
+CREATE INDEX IF NOT EXISTS idx_users_security_questions_user_id_question_id ON users_security_questions(user_id, question_id);
+
 -- +goose Down
 
 DROP TABLE IF EXISTS security_questions;

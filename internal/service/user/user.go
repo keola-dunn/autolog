@@ -1,13 +1,14 @@
 package user
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
 	"golang.org/x/crypto/argon2"
@@ -35,8 +36,9 @@ type ServiceIface interface {
 	CreateNewUser(context.Context, CreateNewUserInput) (string, error)
 	ValidateCredentials(ctx context.Context, user, password string) (bool, string, error)
 
+	DoesUsernameOrEmailExist(ctx context.Context, username, email string) (bool, bool, error)
+
 	GetSecurityQuestions(context.Context) ([]SecurityQuestion, error)
-	CreateUserSecurityQuestions(ctx context.Context, userId string, questions []UserSecurityQuestion) error
 }
 
 type Service struct {
@@ -62,14 +64,18 @@ func NewService(cfg ServiceConfig) *Service {
 }
 
 type CreateNewUserInput struct {
-	Username string
-	Email    string
-	Password string
+	Username          string
+	Email             string
+	Password          string
+	SecurityQuestions []UserSecurityQuestion
 }
 
 func (c *CreateNewUserInput) Valid() bool {
 	// TODO: how could I scan/check for username creations that are offensive?
-	if strings.TrimSpace(c.Email) == "" || strings.TrimSpace(c.Password) == "" || strings.TrimSpace(c.Email) == "" {
+	if strings.TrimSpace(c.Email) == "" ||
+		strings.TrimSpace(c.Password) == "" ||
+		strings.TrimSpace(c.Email) == "" ||
+		len(c.SecurityQuestions) < 3 {
 		return false
 	}
 
@@ -87,26 +93,64 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 		return "", ErrInvalidArg
 	}
 
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	salt := s.randomGenerator.RandomString(s.saltLength)
 
 	passwordHash := s.passwordHash(input.Password, salt)
 
+	userId, err := createNewUserRecord(ctx, tx, input.Username, salt, string(passwordHash), input.Email)
+	if err != nil {
+		// TODO: figure out the error when a unique constraint on username or email is violated
+		return "", fmt.Errorf("failed to create new user record: %w", err)
+	}
+
+	userSecQuestions := make([]userSecurityQuestionRecord, 0, len(input.SecurityQuestions))
+	for _, question := range input.SecurityQuestions {
+		salt = s.randomGenerator.RandomString(s.saltLength)
+		answerHash := s.passwordHash(question.Answer, salt)
+
+		userSecQuestions = append(userSecQuestions, userSecurityQuestionRecord{
+			questionId: question.QuestionId,
+			answerHash: string(answerHash),
+			salt:       salt,
+			userId:     userId,
+		})
+	}
+
+	if err := createUserSecurityQuestions(ctx, tx, userSecQuestions); err != nil {
+		return "", fmt.Errorf("failed to create user security questions: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("failed to commit transaction to db: %w", err)
+	}
+
+	return userId, nil
+}
+
+func createNewUserRecord(ctx context.Context, dbTransaction pgx.Tx, username, salt, passwordHash, email string) (string, error) {
 	query := `
 	INSERT INTO users(username, salt, password_hash, email)
 	VALUES ($1, $2, $3, $4) RETURNING id`
 
-	row := s.db.QueryRow(ctx, query, input.Username, salt, string(passwordHash), input.Email)
+	row := dbTransaction.QueryRow(ctx, query, username, salt, passwordHash, email)
 
-	var id string
+	var id pgtype.UUID
 	if err := row.Scan(&id); err != nil {
-		return "", fmt.Errorf("failed to exec create new user query: %w", err)
+		return "", fmt.Errorf("failed to insert new user: %w", err)
 	}
-	// TODO: figure out the error when a unique constraint on username or email is violated
-	return id, nil
+
+	return id.String(), nil
 }
 
-func (s *Service) passwordHash(password, salt string) []byte {
-	return argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
+func (s *Service) passwordHash(password, salt string) string {
+	pwHash := argon2.Key([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
+	return base64.RawStdEncoding.EncodeToString(pwHash)
 }
 
 // ValidateCredentials will check the provided credentials against the database. This
@@ -132,7 +176,7 @@ func (s *Service) ValidateCredentials(ctx context.Context, user, password string
 
 	row := s.db.QueryRow(ctx, query, user)
 
-	var userId string
+	var userId pgtype.UUID
 	var salt string
 	var storedPasswordHash string
 	if err := row.Scan(&userId, &salt, &storedPasswordHash); err != nil {
@@ -144,9 +188,46 @@ func (s *Service) ValidateCredentials(ctx context.Context, user, password string
 	}
 
 	providedHash := s.passwordHash(password, salt)
-	if bytes.Equal(providedHash, []byte(storedPasswordHash)) {
-		return true, userId, nil
+	if providedHash == storedPasswordHash {
+		return true, userId.String(), nil
 	}
 
 	return false, "", nil
+}
+
+// DoesUsernameOrEmailExist checks if a provided username or email exists in the users table already.
+// Both a username and an email must be provided. This is intended to check both.
+// returns bool (username exists), bool (email exists), and an error
+func (s *Service) DoesUsernameOrEmailExist(ctx context.Context, username, email string) (bool, bool, error) {
+	if strings.TrimSpace(username) == "" || strings.TrimSpace(email) == "" {
+		return false, false, ErrInvalidArg
+	}
+
+	query := `
+	WITH existing_user_records AS (
+		SELECT 
+			username, 
+			email
+		FROM users 
+		WHERE username = $1 OR email = $2
+	)
+	SELECT 
+		CASE 
+			WHEN (SELECT true FROM existing_user_records WHERE username = $1) THEN true
+		ELSE false
+		END as username_exists,
+		CASE 
+			WHEN (SELECT true FROM existing_user_records WHERE email = $2) THEN true
+		ELSE false
+		END as email_exists
+	`
+	row := s.db.QueryRow(ctx, query, strings.TrimSpace(username), strings.TrimSpace(email))
+
+	var usernameExists bool
+	var emailExists bool
+	if err := row.Scan(&usernameExists, &emailExists); err != nil {
+		return usernameExists, emailExists, fmt.Errorf("failed to query if username or email exists: %w", err)
+	}
+
+	return usernameExists, emailExists, nil
 }
