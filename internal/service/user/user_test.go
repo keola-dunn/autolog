@@ -22,45 +22,95 @@ func (f *fakeRandomService) RandomString(_ int64) string {
 }
 
 func TestCreateNewUser(t *testing.T) {
+	testUserId := "e186aa27-10d4-4f06-907f-ec1a37174a98"
 	tests := []struct {
 		name  string
 		input user.CreateNewUserInput
 
-		expectedQuery     string
-		expectedQueryArgs []interface{}
-		fakeQueryRows     *pgxmock.Rows
-		fakeQueryErr      error
-
+		dbFunc         func(db pgxmock.PgxConnIface)
 		expectedUserId string
 		expectedErr    error
 	}{
 		{
-			name:              "InvalidArg",
-			input:             user.CreateNewUserInput{},
-			expectedQuery:     "",
-			expectedQueryArgs: nil,
-			fakeQueryRows:     nil,
-			fakeQueryErr:      nil,
-			expectedUserId:    "",
-			expectedErr:       user.ErrInvalidArg,
+			name:           "InvalidArg",
+			input:          user.CreateNewUserInput{},
+			dbFunc:         func(db pgxmock.PgxConnIface) {},
+			expectedUserId: "",
+			expectedErr:    user.ErrInvalidArg,
 		},
 		{
-			name: "DbError",
+			name: "DbError-CreateUserRecord",
 			input: user.CreateNewUserInput{
 				Username: "TestUsername",
 				Email:    "TestEmail",
 				Password: "TestPassword",
+				SecurityQuestions: []user.UserSecurityQuestion{
+					{}, {}, {},
+				},
 			},
-			expectedQuery: "INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id",
-			expectedQueryArgs: []interface{}{
-				"TestUsername",
-				"fakerandomstring",
-				string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175}),
-				"TestEmail"},
-			fakeQueryRows:  pgxmock.NewRows(nil),
-			fakeQueryErr:   errors.New("fake db error"),
+			dbFunc: func(db pgxmock.PgxConnIface) {
+				db.ExpectBegin()
+
+				db.ExpectQuery("INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id").
+					WithArgs(
+						"TestUsername",
+						"fakerandomstring",
+						"m2LHi/PGOgAmCn17BQx8wTp9JZdc8lCBELH2NPsvSVs",
+						"TestEmail").
+					WillReturnRows(pgxmock.NewRows(nil)).
+					WillReturnError(errors.New("fake db error"))
+
+				db.ExpectRollback()
+			},
 			expectedUserId: "",
-			expectedErr:    errors.New("failed to exec create new user query: fake db error"),
+			expectedErr:    errors.New("failed to create new user record: failed to insert new user: fake db error"),
+		},
+		{
+			name: "DbError-CreateUserSecurityQuestionRecords",
+			input: user.CreateNewUserInput{
+				Username: "TestUsername",
+				Email:    "TestEmail",
+				Password: "TestPassword",
+				SecurityQuestions: []user.UserSecurityQuestion{
+					{
+						QuestionId: "TestQuestionId",
+						Answer:     "Test Answer 1",
+					}, {
+						QuestionId: "TestQuestionId2",
+						Answer:     "Test Answer 2",
+					}, {
+						QuestionId: "TestQuestionId3",
+						Answer:     "Test Answer 3",
+					},
+				},
+			},
+			dbFunc: func(db pgxmock.PgxConnIface) {
+				db.ExpectBegin()
+
+				db.ExpectQuery("INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id").
+					WithArgs(
+						"TestUsername",
+						"fakerandomstring",
+						"m2LHi/PGOgAmCn17BQx8wTp9JZdc8lCBELH2NPsvSVs",
+						"TestEmail").
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(testUserId))
+
+				db.ExpectExec((`
+				INSERT INTO users_security_questions (user_id, question_id, answer_hash, salt) 
+				VALUES 
+					($1, $2, $3, $4), 
+					($5, $6, $7, $8), 
+					($9, $10, $11, $12)`)).
+					WithArgs(
+						testUserId, "TestQuestionId", "QxPGM9/ix/57HRCs3ZbIqaVI7nbKmwcZHJIeLIgtc5Y", "fakerandomstring",
+						testUserId, "TestQuestionId2", "b+hYERj3RxnD8+ijNE3Ot6yS+q62VNGlXvJnWZ84o5U", "fakerandomstring",
+						testUserId, "TestQuestionId3", "zvdpXECZZTj4uu3A8Tleo9RKRMUx+Wz9Xqbt+8Evug8", "fakerandomstring").
+					WillReturnError(errors.New("fake db error"))
+
+				db.ExpectRollback()
+			},
+			expectedUserId: "",
+			expectedErr:    errors.New("failed to create user security questions: failed to insert user security questions: fake db error"),
 		},
 		{
 			name: "Success",
@@ -68,18 +118,45 @@ func TestCreateNewUser(t *testing.T) {
 				Username: "TestUsername",
 				Email:    "TestEmail",
 				Password: "TestPassword",
+				SecurityQuestions: []user.UserSecurityQuestion{
+					{
+						QuestionId: "TestQuestionId",
+						Answer:     "Test Answer 1",
+					}, {
+						QuestionId: "TestQuestionId2",
+						Answer:     "Test Answer 2",
+					}, {
+						QuestionId: "TestQuestionId3",
+						Answer:     "Test Answer 3",
+					},
+				},
 			},
-			expectedQuery: "INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id",
-			expectedQueryArgs: []interface{}{
-				"TestUsername",
-				"fakerandomstring",
-				string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175}),
-				"TestEmail"},
-			fakeQueryRows: pgxmock.NewRows([]string{
-				"id",
-			}).AddRow("UserID"),
-			fakeQueryErr:   nil,
-			expectedUserId: "UserID",
+			dbFunc: func(db pgxmock.PgxConnIface) {
+				db.ExpectBegin()
+
+				db.ExpectQuery("INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id").
+					WithArgs(
+						"TestUsername",
+						"fakerandomstring",
+						"m2LHi/PGOgAmCn17BQx8wTp9JZdc8lCBELH2NPsvSVs",
+						"TestEmail").
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(testUserId))
+
+				db.ExpectExec((`
+				INSERT INTO users_security_questions (user_id, question_id, answer_hash, salt) 
+				VALUES 
+					($1, $2, $3, $4), 
+					($5, $6, $7, $8), 
+					($9, $10, $11, $12)`)).
+					WithArgs(
+						testUserId, "TestQuestionId", "QxPGM9/ix/57HRCs3ZbIqaVI7nbKmwcZHJIeLIgtc5Y", "fakerandomstring",
+						testUserId, "TestQuestionId2", "b+hYERj3RxnD8+ijNE3Ot6yS+q62VNGlXvJnWZ84o5U", "fakerandomstring",
+						testUserId, "TestQuestionId3", "zvdpXECZZTj4uu3A8Tleo9RKRMUx+Wz9Xqbt+8Evug8", "fakerandomstring").
+					WillReturnResult(pgxmock.NewResult("insert", 3))
+
+				db.ExpectCommit()
+			},
+			expectedUserId: testUserId,
 			expectedErr:    nil,
 		},
 	}
@@ -92,10 +169,7 @@ func TestCreateNewUser(t *testing.T) {
 			}
 			defer db.Close(context.Background())
 
-			db.ExpectQuery(test.expectedQuery).
-				WithArgs(test.expectedQueryArgs...).
-				WillReturnRows(test.fakeQueryRows).
-				WillReturnError(test.fakeQueryErr)
+			test.dbFunc(db)
 
 			service := user.NewService(user.ServiceConfig{
 				DB:              db,
@@ -112,6 +186,7 @@ func TestCreateNewUser(t *testing.T) {
 }
 
 func TestValidateCredentials(t *testing.T) {
+	testUserId := "e186aa27-10d4-4f06-907f-ec1a37174a98"
 	tests := []struct {
 		name     string
 		user     string
@@ -167,7 +242,7 @@ func TestValidateCredentials(t *testing.T) {
 			expectedQueryArgs: []interface{}{"Username"},
 			fakeQueryRows: pgxmock.NewRows([]string{"id", "salt", "password_hash"}).AddRows(
 				[]interface{}{
-					"UserID",
+					testUserId,
 					"fakerandomstring",
 					string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175})},
 			),
@@ -184,13 +259,13 @@ func TestValidateCredentials(t *testing.T) {
 			expectedQueryArgs: []interface{}{"Username"},
 			fakeQueryRows: pgxmock.NewRows([]string{"id", "salt", "password_hash"}).AddRows(
 				[]interface{}{
-					"UserID",
+					testUserId,
 					"fakerandomstring",
-					string([]uint8{25, 57, 194, 158, 249, 111, 195, 48, 173, 95, 240, 160, 80, 177, 217, 217, 70, 114, 217, 170, 140, 12, 47, 250, 45, 133, 246, 213, 54, 209, 213, 175})},
+					"m2LHi/PGOgAmCn17BQx8wTp9JZdc8lCBELH2NPsvSVs"},
 			),
 			fakeQueryErr:   nil,
 			expectedValid:  true,
-			expectedUserId: "UserID",
+			expectedUserId: testUserId,
 			expectedErr:    nil,
 		},
 	}
