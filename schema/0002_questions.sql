@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users_security_questions (
     question_id uuid NOT NULL references security_questions(id),
     answer_hash text NOT NULL,
     salt text,
-    created_at timestamptz
+    created_at timestamptz DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_security_questions_user_id_question_id ON users_security_questions(user_id, question_id);

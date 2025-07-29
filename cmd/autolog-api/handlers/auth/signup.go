@@ -101,6 +101,7 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		Email:             reqBody.Email,
 		Password:          reqBody.Password,
 		SecurityQuestions: secQuestions,
+		Role:              user.RoleUser,
 	})
 	if err != nil {
 		// TODO: handle if username or email already exists

@@ -39,6 +39,8 @@ type ServiceIface interface {
 	DoesUsernameOrEmailExist(ctx context.Context, username, email string) (bool, bool, error)
 
 	GetSecurityQuestions(context.Context) ([]SecurityQuestion, error)
+
+	GetUserRole(ctx context.Context, userId string) (GetUserRoleOutput, error)
 }
 
 type Service struct {
@@ -68,6 +70,7 @@ type CreateNewUserInput struct {
 	Email             string
 	Password          string
 	SecurityQuestions []UserSecurityQuestion
+	Role              Role
 }
 
 func (c *CreateNewUserInput) Valid() bool {
@@ -124,6 +127,10 @@ func (s *Service) CreateNewUser(ctx context.Context, input CreateNewUserInput) (
 
 	if err := createUserSecurityQuestions(ctx, tx, userSecQuestions); err != nil {
 		return "", fmt.Errorf("failed to create user security questions: %w", err)
+	}
+
+	if err := createUserRoleRecord(ctx, tx, userId, input.Role); err != nil {
+		return "", fmt.Errorf("failed to create user role record: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

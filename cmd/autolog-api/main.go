@@ -129,6 +129,10 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("healthy!"))
 }
 
+func robotsTxt(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 	router := chi.NewRouter()
 
@@ -137,12 +141,40 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 	router.Get("/", home)
 	router.Get("/health", healthCheck)
 
+	router.Get("/robots.txt", robotsTxt)
+
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/auth", func(router chi.Router) {
 			router.Post("/login", authHandler.Login)
 			router.Post("/signup", authHandler.SignUp)
 
 			router.Get("/security-questions", authHandler.GetSecurityQuestions)
+		})
+
+		router.Route("/users", func(router chi.Router) {
+			// get user details
+		})
+
+		router.Route("/cars", func(router chi.Router) {
+			// get a user's cars
+			router.Get("/", nil)
+
+			// public route to see vehicle history if, say, looking to buy.
+			// behaves differently if signed in.
+			router.Get("/lookup", nil)
+
+			router.Route("/{carId}", func(router chi.Router) {
+
+				// get car details and logs
+				router.Get("/", nil)
+
+				// post car update (if sold, etc.)
+				router.Post("/", nil)
+
+				// post maintence log
+				router.Post("/maintenance-log", nil)
+			})
+
 		})
 	})
 

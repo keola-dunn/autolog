@@ -47,6 +47,7 @@ func TestCreateNewUser(t *testing.T) {
 				SecurityQuestions: []user.UserSecurityQuestion{
 					{}, {}, {},
 				},
+				Role: user.RoleUser,
 			},
 			dbFunc: func(db pgxmock.PgxConnIface) {
 				db.ExpectBegin()
@@ -83,6 +84,7 @@ func TestCreateNewUser(t *testing.T) {
 						Answer:     "Test Answer 3",
 					},
 				},
+				Role: user.RoleUser,
 			},
 			dbFunc: func(db pgxmock.PgxConnIface) {
 				db.ExpectBegin()
@@ -113,7 +115,7 @@ func TestCreateNewUser(t *testing.T) {
 			expectedErr:    errors.New("failed to create user security questions: failed to insert user security questions: fake db error"),
 		},
 		{
-			name: "Success",
+			name: "DbErr-CreateUserRole",
 			input: user.CreateNewUserInput{
 				Username: "TestUsername",
 				Email:    "TestEmail",
@@ -130,6 +132,7 @@ func TestCreateNewUser(t *testing.T) {
 						Answer:     "Test Answer 3",
 					},
 				},
+				Role: user.RoleUser,
 			},
 			dbFunc: func(db pgxmock.PgxConnIface) {
 				db.ExpectBegin()
@@ -153,6 +156,80 @@ func TestCreateNewUser(t *testing.T) {
 						testUserId, "TestQuestionId2", "b+hYERj3RxnD8+ijNE3Ot6yS+q62VNGlXvJnWZ84o5U", "fakerandomstring",
 						testUserId, "TestQuestionId3", "zvdpXECZZTj4uu3A8Tleo9RKRMUx+Wz9Xqbt+8Evug8", "fakerandomstring").
 					WillReturnResult(pgxmock.NewResult("insert", 3))
+
+				db.ExpectExec(`
+				WITH role AS (
+					SELECT 
+						id
+					FROM roles r
+					WHERE r.role = $1
+					LIMIT 1
+				)
+				INSERT INTO users_roles (user_id, role_id) 
+				VALUES 
+				($2, (SELECT id FROM role))
+				`).WithArgs("user", testUserId).WillReturnError(errors.New("fake create role error"))
+
+				db.ExpectRollback()
+			},
+			expectedUserId: "",
+			expectedErr:    errors.New("failed to create user role record: failed to insert user role record: fake create role error"),
+		},
+		{
+			name: "Success",
+			input: user.CreateNewUserInput{
+				Username: "TestUsername",
+				Email:    "TestEmail",
+				Password: "TestPassword",
+				SecurityQuestions: []user.UserSecurityQuestion{
+					{
+						QuestionId: "TestQuestionId",
+						Answer:     "Test Answer 1",
+					}, {
+						QuestionId: "TestQuestionId2",
+						Answer:     "Test Answer 2",
+					}, {
+						QuestionId: "TestQuestionId3",
+						Answer:     "Test Answer 3",
+					},
+				},
+				Role: user.RoleUser,
+			},
+			dbFunc: func(db pgxmock.PgxConnIface) {
+				db.ExpectBegin()
+
+				db.ExpectQuery("INSERT INTO users(username, salt, password_hash, email) VALUES ($1, $2, $3, $4) RETURNING id").
+					WithArgs(
+						"TestUsername",
+						"fakerandomstring",
+						"m2LHi/PGOgAmCn17BQx8wTp9JZdc8lCBELH2NPsvSVs",
+						"TestEmail").
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(testUserId))
+
+				db.ExpectExec((`
+				INSERT INTO users_security_questions (user_id, question_id, answer_hash, salt) 
+				VALUES 
+					($1, $2, $3, $4), 
+					($5, $6, $7, $8), 
+					($9, $10, $11, $12)`)).
+					WithArgs(
+						testUserId, "TestQuestionId", "QxPGM9/ix/57HRCs3ZbIqaVI7nbKmwcZHJIeLIgtc5Y", "fakerandomstring",
+						testUserId, "TestQuestionId2", "b+hYERj3RxnD8+ijNE3Ot6yS+q62VNGlXvJnWZ84o5U", "fakerandomstring",
+						testUserId, "TestQuestionId3", "zvdpXECZZTj4uu3A8Tleo9RKRMUx+Wz9Xqbt+8Evug8", "fakerandomstring").
+					WillReturnResult(pgxmock.NewResult("insert", 3))
+
+				db.ExpectExec(`
+					WITH role AS (
+						SELECT 
+							id
+						FROM roles r
+						WHERE r.role = $1
+						LIMIT 1
+					)
+					INSERT INTO users_roles (user_id, role_id) 
+					VALUES 
+					($2, (SELECT id FROM role))
+					`).WithArgs("user", testUserId).WillReturnResult(pgxmock.NewResult("insert", 1))
 
 				db.ExpectCommit()
 			},
