@@ -27,6 +27,7 @@ type ServiceConfig struct {
 }
 
 type ServiceIface interface {
+	CreateServiceLog(ctx context.Context, serviceLog ServiceLog, userId, carId string) (string, error)
 }
 
 type Service struct {

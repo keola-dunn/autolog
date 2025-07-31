@@ -22,7 +22,24 @@ CREATE TABLE IF NOT EXISTS users_cars (
 );
 CREATE INDEX IF NOT EXISTS idx_users_cars_user_id ON users_cars(user_id);
 
+
+CREATE TABLE IF NOT EXISTS service_logs (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid NOT NULL references users(id),
+    car_id uuid NOT NULL references cars(id),
+
+    "type" varchar(128),
+    "date" date,
+    details JSONB,
+    notes text,
+
+    created_at timestamptz DEFAULT NOW(),
+    updated_at timestamptz DEFAULT NOW()
+)
+CREATE INDEX IF NOT EXISTS idx_service_logs_user_id ON service_logs(user_id);
+
 -- +goose Down
 
+DROP TABLE IF EXISTS service_logs;
 DROP TABLE IF EXISTS users_cars;
 DROP TABLE IF EXISTS cars;
