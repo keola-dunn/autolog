@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS cars (
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_cars_vin ON cars(vin);
 
 CREATE TABLE IF NOT EXISTS users_cars (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
