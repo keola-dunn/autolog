@@ -10,6 +10,7 @@ import (
 type ServiceLog struct {
 	Type    string
 	Date    time.Time
+	Mileage int64
 	Details any
 	Notes   string
 
@@ -28,11 +29,11 @@ func (s *Service) CreateServiceLog(ctx context.Context, serviceLog ServiceLog, u
 	}
 
 	query := `
-	INSERT INTO service_logs (user_id, car_id, type, date, details, notes)
+	INSERT INTO service_logs (user_id, car_id, type, date, mileage, details, notes)
 	VALUES
-	($1, $2, $3, $4, $5, $6) RETURNING id`
+	($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
-	row := s.db.QueryRow(ctx, query, userId, carId, serviceLog.Type, serviceLog.Date, serviceLog.Details, serviceLog.Notes)
+	row := s.db.QueryRow(ctx, query, userId, carId, serviceLog.Type, serviceLog.Date, serviceLog.Mileage, serviceLog.Details, serviceLog.Notes)
 
 	var serviceLogId string
 	if err := row.Scan(&serviceLogId); err != nil {

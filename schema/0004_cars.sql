@@ -1,5 +1,20 @@
 -- +goose Up
 
+CREATE TABLE IF NOT EXISTS shops (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name varchar(256),
+    address1 varchar(256),
+    address2 varchar(256),
+    city varchar(128),
+    state varchar(4),
+    zip varchar(12),
+    phone varchar(20),
+    
+    created_by uuid NOT NULL references users(id),
+    created_at timestamptz DEFAULT NOW(),
+    updated_at timestamptz DEFAULT NOW()
+)
+
 CREATE TABLE IF NOT EXISTS cars (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
 
@@ -31,6 +46,7 @@ CREATE TABLE IF NOT EXISTS service_logs (
 
     "type" varchar(128),
     "date" date,
+    mileage integer,
     details JSONB,
     notes text,
 
@@ -44,3 +60,4 @@ CREATE INDEX IF NOT EXISTS idx_service_logs_user_id ON service_logs(user_id);
 DROP TABLE IF EXISTS service_logs;
 DROP TABLE IF EXISTS users_cars;
 DROP TABLE IF EXISTS cars;
+DROP TABLE IF EXISTS shops;

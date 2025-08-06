@@ -47,6 +47,7 @@ func NewService(cfg ServiceConfig) *Service {
 }
 
 type Car struct {
+	id    string
 	Make  string
 	Model string
 	Trim  string
@@ -55,6 +56,10 @@ type Car struct {
 
 	createdAt time.Time
 	updatedAt time.Time
+}
+
+func (c *Car) Id() string {
+	return c.id
 }
 
 func (s *Service) CreateCar(ctx context.Context, userId string, car Car) error {
@@ -125,4 +130,47 @@ func createUserCarRecord(ctx context.Context, tx pgx.Tx, userId, carId string) (
 	}
 
 	return userCarId, nil
+}
+
+func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error) {
+	if s.db == nil {
+		return nil, ErrMissingRequiredConfiguration
+	}
+
+	if strings.TrimSpace(userId) == "" {
+		return nil, ErrInvalidArg
+	}
+
+	query := `
+	SELECT 
+		c.id,
+    	c.make,
+    	c.model,
+    	c.trim,
+    	c.year,
+    	c.vin,
+    	c.created_at,
+    	c.updated_at
+	FROM cars c
+	JOIN users_cars uc ON uc.car_id = c.id
+	WHERE uc.user_id = $1`
+
+	rows, err := s.db.Query(ctx, query, userId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query for user cars: %w", err)
+	}
+
+	defer rows.Close()
+
+	var cars []Car
+	for rows.Next() {
+		var c Car
+		if err := rows.Scan(c.id, c.Make, c.Model, c.Trim, c.Year, c.VIN, c.createdAt, c.updatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		cars = append(cars, c)
+	}
+
+	return cars, nil
 }
