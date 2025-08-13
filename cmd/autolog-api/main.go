@@ -152,7 +152,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 		})
 
 		router.Route("/users", func(router chi.Router) {
-			// get user details
+			router.With(authHandler.RequireAuthentication).Get("/", authHandler.GetUser)
 		})
 
 		router.Route("/cars", func(router chi.Router) {
@@ -162,6 +162,9 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 			// public route to see vehicle history if, say, looking to buy.
 			// behaves differently if signed in.
 			router.Get("/lookup", nil)
+
+			// put a car if acquired
+			router.Put("/", nil)
 
 			router.Route("/{carId}", func(router chi.Router) {
 

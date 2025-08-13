@@ -2,14 +2,15 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
+
+	"github.com/keola-dunn/autolog/cmd/autolog-api/utils"
+	"github.com/keola-dunn/autolog/internal/httputil"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-type AutologAPIJWTClaims struct {
-	jwt.RegisteredClaims
-}
 
 func (h *AuthHandler) createJWT(userId string) (string, error) {
 	now := h.calendarService.NowUTC()
@@ -29,7 +30,7 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 		ID:        tokenId,
 	}
 
-	myClaims := AutologAPIJWTClaims{
+	myClaims := utils.AutologAPIJWTClaims{
 		RegisteredClaims: claims,
 	}
 
@@ -43,9 +44,9 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 }
 
 // VerifyToken makes sure the token is valid. Returns boolean indicating if the token
-// is valid, the user id associated with the token,
-func (a *AuthHandler) VerifyToken(tokenString string) (bool, AutologAPIJWTClaims, error) {
-	var claims AutologAPIJWTClaims
+// is valid, the user id associated with the token, and an error
+func (a *AuthHandler) VerifyToken(tokenString string) (bool, utils.AutologAPIJWTClaims, error) {
+	var claims utils.AutologAPIJWTClaims
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		return a.jwtSecret, nil
 	})
@@ -60,6 +61,31 @@ func (a *AuthHandler) VerifyToken(tokenString string) (bool, AutologAPIJWTClaims
 	return true, claims, nil
 }
 
-// func (a *AuthHandler) JWTAuthention(next http.Handler) http.Handler {
+// RequireAuthentication is a middleware that requires the request to be authenticated
+func (a *AuthHandler) RequireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		splitToken := strings.Split(authHeader, "Bearer ")
+		token := splitToken[1]
 
-// }
+		valid, _, err := a.VerifyToken(token)
+		if err != nil {
+			a.logger.Error("failed to verify token", err)
+			httputil.RespondWithError(w, http.StatusInternalServerError, "")
+			return
+		}
+		if !valid {
+			// log failed auth attempts
+			a.logger.Warn("invalid token provided",
+				"token", token,
+				"referer", r.Header.Get("referer"),
+				"user-agent", r.Header.Get("user-agent"),
+				"x-forwarded-for", r.Header.Get("X-Forwarded-For"))
+
+			httputil.RespondWithError(w, http.StatusUnauthorized, "")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
