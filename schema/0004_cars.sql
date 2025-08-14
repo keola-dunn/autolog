@@ -9,14 +9,10 @@ CREATE TABLE IF NOT EXISTS shops (
     state varchar(4),
     zip varchar(12),
     phone varchar(20),
-    
     created_by uuid NOT NULL references users(id),
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
 );
-
-INSERT INTO roles(role) VALUES 
-    ('mechanic');
 
 CREATE TABLE IF NOT EXISTS cars (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,

@@ -152,30 +152,37 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 		})
 
 		router.Route("/users", func(router chi.Router) {
+			// GET user details
+			// authenticated only
 			router.With(authHandler.RequireAuthentication).Get("/", authHandler.GetUser)
 		})
 
 		router.Route("/cars", func(router chi.Router) {
-			// get a user's cars
-			router.Get("/", nil)
+			// GET user's cars
+			// authenticated only
+			router.With(authHandler.RequireAuthentication).Get("/", nil)
 
-			// public route to see vehicle history if, say, looking to buy.
-			// behaves differently if signed in.
-			router.Get("/lookup", nil)
+			// GET search for car
+			// public or authenticated
+			router.Get("/search", nil)
 
-			// put a car if acquired
-			router.Put("/", nil)
+			// PUT car if acquired
+			// authenticated only
+			router.With(authHandler.RequireAuthentication).Put("/", nil)
 
 			router.Route("/{carId}", func(router chi.Router) {
 
-				// get car details and logs
+				// GET car details and logs
+				// public or authenticated
 				router.Get("/", nil)
 
-				// post car update (if sold, etc.)
-				router.Post("/", nil)
+				// POST car update (if sold, etc.)
+				// authenticated only
+				router.With(authHandler.RequireAuthentication).Post("/", nil)
 
-				// post maintence log
-				router.Post("/maintenance-log", nil)
+				// POST maintence log
+				// authenticated only
+				router.With(authHandler.RequireAuthentication).Post("/maintenance-log", nil)
 			})
 
 		})

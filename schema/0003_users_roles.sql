@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS roles (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-    role varchar(64),
+    role varchar(64) UNIQUE,
     created_at timestamptz DEFAULT NOW()
 );
 

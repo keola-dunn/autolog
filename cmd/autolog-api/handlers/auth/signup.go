@@ -104,7 +104,6 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		Role:              user.RoleUser,
 	})
 	if err != nil {
-		// TODO: handle if username or email already exists
 		a.logger.Error("failed to create new user", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return

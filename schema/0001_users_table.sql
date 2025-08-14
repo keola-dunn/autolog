@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash text,
     email varchar(256) UNIQUE, --email addresses should be limited to 254 or so
     name text DEFAULT '',
+    active boolean NOT NULL DEFAULT true,
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
 );
