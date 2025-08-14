@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS shops (
     created_by uuid NOT NULL references users(id),
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
-)
+);
+
+INSERT INTO roles(role) VALUES 
+    ('mechanic');
 
 CREATE TABLE IF NOT EXISTS cars (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -52,7 +55,8 @@ CREATE TABLE IF NOT EXISTS service_logs (
 
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
-)
+);
+
 CREATE INDEX IF NOT EXISTS idx_service_logs_user_id ON service_logs(user_id);
 
 -- +goose Down
