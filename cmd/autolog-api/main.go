@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
@@ -158,6 +159,10 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler
 	router.Get("/health", healthCheck)
 
 	router.Get("/robots.txt", robotsTxt)
+
+	// debug with pprof
+	// TODO: add auth to this endpoint to prevent public access
+	router.Mount("/debug", middleware.Profiler())
 
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/auth", func(router chi.Router) {
