@@ -157,6 +157,13 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 			router.With(authHandler.RequireAuthentication).Get("/", authHandler.GetUser)
 		})
 
+		router.Route("/shops", func(router chi.Router) {
+			// GET search for shops
+			// public
+			// ex. signing up for the right shop
+			router.Get("/search", nil)
+		})
+
 		router.Route("/cars", func(router chi.Router) {
 			// GET user's cars
 			// authenticated only

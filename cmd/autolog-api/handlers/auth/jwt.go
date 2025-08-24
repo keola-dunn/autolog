@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keola-dunn/autolog/cmd/autolog-api/utils"
 	"github.com/keola-dunn/autolog/internal/httputil"
 
-	"github.com/golang-jwt/jwt/v5"
+	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
 )
 
 func (h *AuthHandler) createJWT(userId string) (string, error) {
@@ -17,48 +16,23 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 
 	tokenId, err := h.randomGenerator.RandomUUID()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate random uuid token id: %w", err)
+		return "", fmt.Errorf("failed to create random token id: %w", err)
 	}
 
-	claims := jwt.RegisteredClaims{
-		Issuer:    h.jwtIssuer,
-		Subject:   userId,
-		Audience:  jwt.ClaimStrings{}, // app specific keys indicating what the JWT is intended to be used by
-		ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * time.Duration(h.jwtExpiryLengthMinutes))),
-		NotBefore: jwt.NewNumericDate(now),
-		IssuedAt:  jwt.NewNumericDate(now),
-		ID:        tokenId,
-	}
-
-	myClaims := utils.AutologAPIJWTClaims{
-		RegisteredClaims: claims,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, myClaims)
-
-	jwtToken, err := token.SignedString([]byte(h.jwtSecret))
-	if err != nil {
-		return "", fmt.Errorf("failed to sign jwt: %w", err)
-	}
-	return jwtToken, nil
-}
-
-// VerifyToken makes sure the token is valid. Returns boolean indicating if the token
-// is valid, the user id associated with the token, and an error
-func (a *AuthHandler) VerifyToken(tokenString string) (bool, utils.AutologAPIJWTClaims, error) {
-	var claims utils.AutologAPIJWTClaims
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-		return a.jwtSecret, nil
+	jwtToken, err := autologjwt.CreateJWT(autologjwt.CreateJWTInput{
+		Issuer:      h.jwtIssuer,
+		UserId:      userId,
+		IssuedAt:    now,
+		ExpiresAt:   now.Add(time.Duration(h.jwtExpiryLengthMinutes) * time.Minute),
+		NotBefore:   now,
+		Id:          tokenId,
+		TokenSecret: h.jwtSecret,
 	})
 	if err != nil {
-		return false, claims, fmt.Errorf("failed to parse jwt: %w", err)
+		return "", fmt.Errorf("failed to create jwt: %w", err)
 	}
 
-	if !token.Valid {
-		return false, claims, nil
-	}
-
-	return true, claims, nil
+	return jwtToken, nil
 }
 
 // RequireAuthentication is a middleware that requires the request to be authenticated
@@ -68,7 +42,7 @@ func (a *AuthHandler) RequireAuthentication(next http.Handler) http.Handler {
 		splitToken := strings.Split(authHeader, "Bearer ")
 		token := splitToken[1]
 
-		valid, _, err := a.VerifyToken(token)
+		valid, _, err := autologjwt.VerifyToken(token, a.jwtSecret)
 		if err != nil {
 			a.logger.Error("failed to verify token", err)
 			httputil.RespondWithError(w, http.StatusInternalServerError, "")
