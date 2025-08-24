@@ -20,10 +20,6 @@ type CarsHandler struct {
 }
 
 type CarsHandlerConfig struct {
-	JWTSecret              string
-	JWTIssuer              string
-	JWTExpiryLengthMinutes int64
-
 	// foundationals/platform
 	CalendarService calendar.ServiceIface
 	RandomGenerator random.ServiceIface

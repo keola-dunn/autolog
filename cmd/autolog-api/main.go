@@ -13,10 +13,12 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
+	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/cars"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
+	"github.com/keola-dunn/autolog/internal/service/car"
 	"github.com/keola-dunn/autolog/internal/service/user"
 )
 
@@ -74,6 +76,11 @@ func main() {
 		RandomGenerator: randomSvc,
 	})
 
+	carSvc := car.NewService(car.ServiceConfig{
+		DB:              db,
+		RandomGenerator: randomSvc,
+	})
+
 	///////////////////////////
 	// API Handler Creations //
 	///////////////////////////
@@ -88,8 +95,17 @@ func main() {
 		UserService:            userSvc,
 	})
 
+	carsHandler := cars.NewCarsHandler(cars.CarsHandlerConfig{
+		CalendarService: calendarSvc,
+		RandomGenerator: randomSvc,
+		Logger:          logger,
+
+		UserService: userSvc,
+		CarsHandler: carSvc,
+	})
+
 	// create router using handlers
-	router := newRouter(logger, authHandler)
+	router := newRouter(logger, authHandler, carsHandler)
 
 	/////////////////////////////
 	// Server config and start //
@@ -133,7 +149,7 @@ func robotsTxt(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
+func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler *cars.CarsHandler) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(logger.RequestLogger)
@@ -154,7 +170,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 		router.Route("/users", func(router chi.Router) {
 			// GET user details
 			// authenticated only
-			router.With(authHandler.RequireAuthentication).Get("/", authHandler.GetUser)
+			router.With(authHandler.RequireTokenAuthentication).Get("/", authHandler.GetUser)
 		})
 
 		router.Route("/shops", func(router chi.Router) {
@@ -167,7 +183,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 		router.Route("/cars", func(router chi.Router) {
 			// GET user's cars
 			// authenticated only
-			router.With(authHandler.RequireAuthentication).Get("/", nil)
+			router.With(authHandler.RequireTokenAuthentication).Get("/", nil)
 
 			// GET search for car
 			// public or authenticated
@@ -175,7 +191,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 
 			// PUT car if acquired
 			// authenticated only
-			router.With(authHandler.RequireAuthentication).Put("/", nil)
+			router.With(authHandler.RequireTokenAuthentication).Put("/", carsHandler.CreateCar)
 
 			router.Route("/{carId}", func(router chi.Router) {
 
@@ -185,11 +201,11 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 
 				// POST car update (if sold, etc.)
 				// authenticated only
-				router.With(authHandler.RequireAuthentication).Post("/", nil)
+				router.With(authHandler.RequireTokenAuthentication).Post("/", nil)
 
 				// POST maintence log
 				// authenticated only
-				router.With(authHandler.RequireAuthentication).Post("/maintenance-log", nil)
+				router.With(authHandler.RequireTokenAuthentication).Post("/maintenance-log", nil)
 			})
 
 		})
