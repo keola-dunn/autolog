@@ -38,6 +38,8 @@ type contextKey string
 
 const (
 	contextKeyRequestId = contextKey("requestId")
+
+	contextKeyLogEntry = contextKey("logEntry")
 )
 
 type loggingResponseWriter struct {
@@ -66,10 +68,15 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 		}
 
 		// attach requestId to context for access in downstream entities
-		r = r.WithContext(context.WithValue(r.Context(), contextKeyRequestId, xReqId))
+		ctx := context.WithValue(r.Context(), contextKeyRequestId, xReqId)
+		//r = r.WithContext(context.WithValue(r.Context(), contextKeyRequestId, xReqId))
 
 		logEntry := l.Logger.With("path", r.URL.Path, "method", r.Method, "requestId", xReqId)
 		logEntry.Info("request received")
+
+		ctx = context.WithValue(ctx, contextKeyLogEntry, &Logger{Logger: logEntry})
+
+		r = r.WithContext(ctx)
 
 		next.ServeHTTP(lrw, r)
 
@@ -83,4 +90,12 @@ func (l *Logger) RequestLogger(next http.Handler) http.Handler {
 
 func GetRequestId(ctx context.Context) string {
 	return ctx.Value(contextKeyRequestId).(string)
+}
+
+func GetLogEntry(r *http.Request) *Logger {
+	le, ok := r.Context().Value(contextKeyLogEntry).(*Logger)
+	if !ok {
+		return NewLogger()
+	}
+	return le
 }

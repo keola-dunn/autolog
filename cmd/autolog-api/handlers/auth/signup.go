@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
+	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/service/user"
 )
 
@@ -45,9 +46,10 @@ type signUpResponse struct {
 }
 
 func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
+	logEntry := logger.GetLogEntry(r)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		a.logger.Error("failed to read sign up request body: %w", err)
+		logEntry.Error("failed to read sign up request body: %w", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
@@ -60,7 +62,7 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	reqBody := signUpRequestBody{}
 
 	if err := json.Unmarshal(data, &reqBody); err != nil {
-		a.logger.Error("failed to unmarshal request body", err)
+		logEntry.Error("failed to unmarshal request body", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
@@ -73,7 +75,7 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 
 	usernameExists, emailExists, err := a.userService.DoesUsernameOrEmailExist(ctx, reqBody.Username, reqBody.Email)
 	if err != nil {
-		a.logger.Error("failed to check if username or email exists", err)
+		logEntry.Error("failed to check if username or email exists", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
@@ -104,14 +106,14 @@ func (a *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		Role:              user.RoleUser,
 	})
 	if err != nil {
-		a.logger.Error("failed to create new user", err)
+		logEntry.Error("failed to create new user", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
 
 	jwtToken, err := a.createJWT(userId)
 	if err != nil {
-		a.logger.Error("failed to create new user jwt", err)
+		logEntry.Error("failed to create new user jwt", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}

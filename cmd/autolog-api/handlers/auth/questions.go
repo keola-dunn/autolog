@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
+	"github.com/keola-dunn/autolog/internal/logger"
 )
 
 type getSecurityQuestionsResponse struct {
@@ -16,9 +17,10 @@ type SecurityQuestion struct {
 }
 
 func (a *AuthHandler) GetSecurityQuestions(w http.ResponseWriter, r *http.Request) {
+	logEntry := logger.GetLogEntry(r)
 	questions, err := a.userService.GetSecurityQuestions(r.Context())
 	if err != nil {
-		a.logger.Error("failed to get security questions", err)
+		logEntry.Error("failed to get security questions", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}

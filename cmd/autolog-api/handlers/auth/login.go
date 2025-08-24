@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
+	"github.com/keola-dunn/autolog/internal/logger"
 )
 
 type LoginResponse struct {
@@ -12,6 +13,8 @@ type LoginResponse struct {
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	logEntry := logger.GetLogEntry(r)
 	user, pass, ok := r.BasicAuth()
 	if !ok {
 		httputil.RespondWithError(w, http.StatusUnauthorized, "missing required user/pass")
@@ -20,7 +23,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	valid, userId, err := h.userService.ValidateCredentials(ctx, user, pass)
 	if err != nil {
-		h.logger.Error("failed to validate credentials", err)
+		logEntry.Error("failed to validate credentials", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
@@ -31,7 +34,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	jwtToken, err := h.createJWT(userId)
 	if err != nil {
-		h.logger.Error("failed to create jwt", err)
+		logEntry.Error("failed to create jwt", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}

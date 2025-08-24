@@ -6,14 +6,17 @@ import (
 
 	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
 	"github.com/keola-dunn/autolog/internal/httputil"
+	"github.com/keola-dunn/autolog/internal/logger"
 )
 
 // RequireAuthentication is a middleware that requires the request to be authenticated
 func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logEntry := logger.GetLogEntry(r)
+
 		authHeader := r.Header.Get("Authorization")
 		if strings.TrimSpace(authHeader) == "" {
-			a.logger.Warn("missing authentication header",
+			logEntry.Warn("missing authentication header",
 				"referer", r.Header.Get("referer"),
 				"user-agent", r.Header.Get("user-agent"),
 				"x-forwarded-for", r.Header.Get("X-Forwarded-For"))
@@ -23,7 +26,7 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 
 		splitToken := strings.Split(authHeader, "Bearer ")
 		if len(splitToken) != 2 || !strings.Contains(authHeader, "Bearer") {
-			a.logger.Warn("invalid authentication header",
+			logEntry.Warn("invalid authentication header",
 				"header", authHeader,
 				"referer", r.Header.Get("referer"),
 				"user-agent", r.Header.Get("user-agent"),
@@ -36,13 +39,13 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 
 		valid, _, err := autologjwt.VerifyToken(token, a.jwtSecret)
 		if err != nil {
-			a.logger.Error("failed to verify token", err)
+			logEntry.Error("failed to verify token", err)
 			httputil.RespondWithError(w, http.StatusInternalServerError, "")
 			return
 		}
 		if !valid {
 			// log failed auth attempts
-			a.logger.Warn("invalid token provided",
+			logEntry.Warn("invalid token provided",
 				"token", token,
 				"referer", r.Header.Get("referer"),
 				"user-agent", r.Header.Get("user-agent"),

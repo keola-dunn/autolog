@@ -11,6 +11,10 @@ type AutologAPIJWTClaims struct {
 	jwt.RegisteredClaims
 }
 
+func (a *AutologAPIJWTClaims) GetUserId() string {
+	return a.Subject
+}
+
 // VerifyToken makes sure the token is valid. Returns boolean indicating if the token
 // is valid, the user id associated with the token, and an error
 func VerifyToken(tokenString, jwtSecret string) (bool, AutologAPIJWTClaims, error) {
@@ -27,10 +31,6 @@ func VerifyToken(tokenString, jwtSecret string) (bool, AutologAPIJWTClaims, erro
 	}
 
 	return true, claims, nil
-}
-
-func GetUserId(claims AutologAPIJWTClaims) string {
-	return claims.Subject
 }
 
 type CreateJWTInput struct {
