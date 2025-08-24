@@ -147,7 +147,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func robotsTxt(w http.ResponseWriter, r *http.Request) {
-
+	w.Write([]byte("User-agent: *\nDisallow: /"))
 }
 
 func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler *cars.CarsHandler) *chi.Mux {
@@ -161,6 +161,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler
 	router.Get("/robots.txt", robotsTxt)
 
 	// debug with pprof
+	// debug/pprof/
 	// TODO: add auth to this endpoint to prevent public access
 	router.Mount("/debug", middleware.Profiler())
 
