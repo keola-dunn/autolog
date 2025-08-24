@@ -29,7 +29,8 @@ var environmentConfig struct {
 	DBHost     string `envconfig:"DB_HOST"`
 	DBPort     int64  `envconfig:"DB_PORT"`
 
-	JWTSecret string `envconfig:"JWT_SECRET"`
+	JWTSecret              string `envconfig:"JWT_SECRET"`
+	JWTExpiryLengthMinutes int64  `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
 }
 
 func main() {
@@ -89,7 +90,7 @@ func main() {
 	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
 		JWTSecret:              environmentConfig.JWTSecret,
 		JWTIssuer:              "",
-		JWTExpiryLengthMinutes: 1,
+		JWTExpiryLengthMinutes: environmentConfig.JWTExpiryLengthMinutes,
 		CalendarService:        calendarSvc,
 		RandomGenerator:        randomSvc,
 		Logger:                 logger,
@@ -103,6 +104,7 @@ func main() {
 
 		UserService: userSvc,
 		CarsHandler: carSvc,
+		JWTSecret:   environmentConfig.JWTSecret,
 	})
 
 	// create router using handlers

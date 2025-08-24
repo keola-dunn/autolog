@@ -1,11 +1,26 @@
 package jwt
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+func GetTokenFromAuthHeader(authHeader string) string {
+	if strings.TrimSpace(authHeader) == "" {
+		return ""
+	}
+
+	splitToken := strings.Split(authHeader, "Bearer ")
+	if len(splitToken) != 2 || !strings.Contains(authHeader, "Bearer") {
+		return ""
+	}
+
+	return splitToken[1]
+}
 
 type AutologAPIJWTClaims struct {
 	jwt.RegisteredClaims
@@ -19,10 +34,14 @@ func (a *AutologAPIJWTClaims) GetUserId() string {
 // is valid, the user id associated with the token, and an error
 func VerifyToken(tokenString, jwtSecret string) (bool, AutologAPIJWTClaims, error) {
 	var claims AutologAPIJWTClaims
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-		return jwtSecret, nil
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (any, error) {
+		return []byte(jwtSecret), nil
 	})
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return false, claims, jwt.ErrTokenExpired
+		}
+
 		return false, claims, fmt.Errorf("failed to parse jwt: %w", err)
 	}
 

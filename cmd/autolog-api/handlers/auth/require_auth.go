@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
 	"github.com/keola-dunn/autolog/internal/httputil"
 	"github.com/keola-dunn/autolog/internal/logger"
@@ -39,6 +41,11 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 
 		valid, _, err := autologjwt.VerifyToken(token, a.jwtSecret)
 		if err != nil {
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				httputil.RespondWithError(w, http.StatusUnauthorized, "token expired")
+				return
+			}
+
 			logEntry.Error("failed to verify token", err)
 			httputil.RespondWithError(w, http.StatusInternalServerError, "")
 			return

@@ -15,14 +15,13 @@ import (
 func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 	logEntry := logger.GetLogEntry(r)
 
-	authHeader := r.Header.Get("Authorization")
-	ok, token, err := autologjwt.VerifyToken(authHeader, "")
+	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
+	ok, token, err := autologjwt.VerifyToken(authToken, h.jwtSecret)
 	if err != nil {
 		logEntry.Error("failed to verify token", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
-
 	if !ok {
 		logEntry.Error("auth token is invalid", err)
 		httputil.RespondWithError(w, http.StatusForbidden, "")
