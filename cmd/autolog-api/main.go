@@ -103,7 +103,7 @@ func main() {
 		Logger:          logger,
 
 		UserService: userSvc,
-		CarsHandler: carSvc,
+		CarService:  carSvc,
 		JWTSecret:   environmentConfig.JWTSecret,
 	})
 

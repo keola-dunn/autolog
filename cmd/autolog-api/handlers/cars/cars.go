@@ -16,7 +16,7 @@ type CarsHandler struct {
 
 	// services
 	userService user.ServiceIface
-	carsHandler car.ServiceIface
+	carService  car.ServiceIface
 
 	jwtSecret string
 }
@@ -29,7 +29,7 @@ type CarsHandlerConfig struct {
 
 	// services
 	UserService user.ServiceIface
-	CarsHandler car.ServiceIface
+	CarService  car.ServiceIface
 
 	JWTSecret string
 }
@@ -41,7 +41,7 @@ func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
 		logger:          config.Logger,
 
 		userService: config.UserService,
-		carsHandler: config.CarsHandler,
+		carService:  config.CarService,
 		jwtSecret:   config.JWTSecret,
 	}
 }

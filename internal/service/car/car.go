@@ -28,6 +28,7 @@ type ServiceConfig struct {
 
 type ServiceIface interface {
 	CreateServiceLog(ctx context.Context, serviceLog ServiceLog, userId, carId string) (string, error)
+	CreateCar(ctx context.Context, userId string, car Car) error
 }
 
 type Service struct {
@@ -53,6 +54,8 @@ type Car struct {
 	Trim  string
 	Year  int64
 	VIN   string
+
+	Color string
 
 	createdAt time.Time
 	updatedAt time.Time
@@ -104,11 +107,11 @@ func (c *Car) valid() bool {
 
 func createCarRecord(ctx context.Context, tx pgx.Tx, car Car) (string, error) {
 	query := `
-	INSERT INTO cars (make, model, trim, year, vin)
+	INSERT INTO cars (make, model, trim, year, vin, color)
 	VALUES 
-	($1, $2, $3, $4, $5) RETURNING id`
+	($1, $2, $3, $4, $5, $6) RETURNING id`
 
-	row := tx.QueryRow(ctx, query, car.Make, car.Model, car.Trim, car.Year, car.VIN)
+	row := tx.QueryRow(ctx, query, car.Make, car.Model, car.Trim, car.Year, car.VIN, car.Color)
 	var carId string
 	if err := row.Scan(&carId); err != nil {
 		return "", fmt.Errorf("failed to insert car: %w", err)
@@ -149,6 +152,7 @@ func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error
     	c.trim,
     	c.year,
     	c.vin,
+		c.color,
     	c.created_at,
     	c.updated_at
 	FROM cars c
@@ -165,7 +169,7 @@ func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error
 	var cars []Car
 	for rows.Next() {
 		var c Car
-		if err := rows.Scan(c.id, c.Make, c.Model, c.Trim, c.Year, c.VIN, c.createdAt, c.updatedAt); err != nil {
+		if err := rows.Scan(c.id, c.Make, c.Model, c.Trim, c.Year, c.VIN, c.Color, c.createdAt, c.updatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
