@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS nhtsa_vpic_data (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     car_id uuid NOT NULL references cars(id),
+    vin varchar(32),
     make varchar(64), 
     model varchar(64),
     year varchar(8),
@@ -45,7 +46,8 @@ CREATE TABLE IF NOT EXISTS nhtsa_vpic_data (
 );
 
 CREATE INDEX IF NOT EXISTS idx_nhtsa_vpic_data_car_id ON nhtsa_vpic_data(car_id);
-CREATE INDEX IF NOT EXISTS idx_nhtsa_vpic_data_car_id ON nhtsa_vpic_data(car_id);
+CREATE INDEX IF NOT EXISTS idx_nhtsa_vpic_data_make_model_year ON nhtsa_vpic_data(make, model, year);
+CREATE INDEX IF NOT EXISTS idx_nhtsa_vpic_data_vin ON nhtsa_vpic_data(vin);
 
 -- +goose Down
 DROP TABLE IF EXISTS nhtsa_vpic_data;
