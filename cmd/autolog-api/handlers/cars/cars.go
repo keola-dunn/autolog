@@ -3,6 +3,7 @@ package cars
 import (
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
+	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
 	"github.com/keola-dunn/autolog/internal/random"
 	"github.com/keola-dunn/autolog/internal/service/car"
 	"github.com/keola-dunn/autolog/internal/service/user"
@@ -18,6 +19,8 @@ type CarsHandler struct {
 	userService user.ServiceIface
 	carService  car.ServiceIface
 
+	nhtsaClient nhtsavpic.ClientIface
+
 	jwtSecret string
 }
 
@@ -31,6 +34,8 @@ type CarsHandlerConfig struct {
 	UserService user.ServiceIface
 	CarService  car.ServiceIface
 
+	NHTSAClient nhtsavpic.ClientIface
+
 	JWTSecret string
 }
 
@@ -42,6 +47,9 @@ func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
 
 		userService: config.UserService,
 		carService:  config.CarService,
-		jwtSecret:   config.JWTSecret,
+
+		nhtsaClient: config.NHTSAClient,
+
+		jwtSecret: config.JWTSecret,
 	}
 }

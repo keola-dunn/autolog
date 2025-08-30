@@ -8,44 +8,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/keola-dunn/autolog/internal/platform/postgres"
-	"github.com/keola-dunn/autolog/internal/random"
 )
 
 var (
-	ErrMissingRequiredConfiguration = errors.New("auth service is missing required configurations to perform this operation")
-
-	ErrInvalidArg = errors.New("one or more of the provided arguments are invalid")
+	ErrNotFound = errors.New("the requested resource was not found")
 )
-
-type ServiceConfig struct {
-	// DB is the Database used for the auth service
-	DB postgres.ConnectionPool
-
-	// RandomGenerator is used to generate random values within the auth service.
-	RandomGenerator random.ServiceIface
-}
-
-type ServiceIface interface {
-	CreateServiceLog(ctx context.Context, serviceLog ServiceLog, userId, carId string) (string, error)
-	CreateCar(ctx context.Context, userId string, car Car) error
-}
-
-type Service struct {
-	db              postgres.ConnectionPool
-	randomGenerator random.ServiceIface
-}
-
-func NewService(cfg ServiceConfig) *Service {
-	if cfg.RandomGenerator == nil {
-		cfg.RandomGenerator = random.NewService()
-	}
-
-	return &Service{
-		db:              cfg.DB,
-		randomGenerator: cfg.RandomGenerator,
-	}
-}
 
 type Car struct {
 	id    string
@@ -57,12 +24,21 @@ type Car struct {
 
 	Color string
 
+	// PublicId is the short 6 character ID assigned to each car for
+	// ease of lookup. Eventual use case would be on a sticker, or as
+	// a QR Code param.
+	publicId string
+
 	createdAt time.Time
 	updatedAt time.Time
 }
 
 func (c *Car) Id() string {
 	return c.id
+}
+
+func (c *Car) PublicId() string {
+	return c.publicId
 }
 
 func (s *Service) CreateCar(ctx context.Context, userId string, car Car) error {
@@ -80,9 +56,16 @@ func (s *Service) CreateCar(ctx context.Context, userId string, car Car) error {
 	}
 	defer tx.Rollback(ctx)
 
+	publicId, _, err := s.generatePublicId(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to generate public id: %w", err)
+	}
+
+	car.publicId = publicId
+
 	carId, err := createCarRecord(ctx, tx, car)
 	if err != nil {
-		return fmt.Errorf("failed to create car redord: %w", err)
+		return fmt.Errorf("failed to create car record: %w", err)
 	}
 
 	if _, err := createUserCarRecord(ctx, tx, userId, carId); err != nil {
@@ -147,6 +130,7 @@ func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error
 	query := `
 	SELECT 
 		c.id,
+		c.public_id,
     	c.make,
     	c.model,
     	c.trim,
@@ -169,7 +153,8 @@ func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error
 	var cars []Car
 	for rows.Next() {
 		var c Car
-		if err := rows.Scan(c.id, c.Make, c.Model, c.Trim, c.Year, c.VIN, c.Color, c.createdAt, c.updatedAt); err != nil {
+		if err := rows.Scan(&c.id, &c.publicId, &c.Make, &c.Model, &c.Trim,
+			&c.Year, &c.VIN, &c.Color, &c.createdAt, &c.updatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
@@ -177,4 +162,128 @@ func (s *Service) GetUsersCars(ctx context.Context, userId string) ([]Car, error
 	}
 
 	return cars, nil
+}
+
+type GetCarInput struct {
+	VIN string
+
+	PublicId string
+
+	Id string
+
+	// PlateNumber - DO NOT USE - edge cases to solve
+	PlateNumber string
+	// PlateState - DO NOT USE - edge cases to solve
+	PlateState string
+}
+
+func (g *GetCarInput) valid() bool {
+	return strings.TrimSpace(g.VIN) != "" ||
+		strings.TrimSpace(g.PublicId) != "" ||
+		(strings.TrimSpace(g.PlateNumber) != "" && strings.TrimSpace(g.PlateState) != "")
+}
+
+type GetCarOutput struct {
+	Car
+	Id        string
+	PublicId  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (s *Service) GetCar(ctx context.Context, input GetCarInput) (GetCarOutput, error) {
+	if s.db == nil {
+		return GetCarOutput{}, ErrMissingRequiredConfiguration
+	}
+
+	if !input.valid() {
+		return GetCarOutput{}, ErrInvalidArg
+	}
+
+	var queryBuilder strings.Builder
+	var conditionalQueryArgs = make([]string, 0, 3)
+	var queryArgs []any
+
+	// TODO: there's some license plate resolutions I need to make
+	// ex. 1 plate could be applied to several cars
+	// queryBuilder.WriteString(`
+	// WITH latest_plates AS (
+	// 	SELECT
+	// 		l.*
+	// 	FROM license_plates l
+	// 	JOIN (
+	// 		SELECT
+	// 			l.car_id ,
+	// 			MAX(l.created_at) max_created_at
+	// 		FROM license_plates l
+	// 		GROUP BY l.car_id
+	// 	) pl ON pl.max_created_at = l.created_at
+	// )
+	// SELECT
+	// 	c.id,
+	// 	c.public_id,
+	// 	c.make,
+	// 	c.model,
+	// 	c.trim,
+	// 	c.YEAR,
+	// 	c.vin,
+	// 	c.created_at,
+	// 	c.updated_at
+	// FROM cars c
+	// LEFT JOIN latest_plates lp ON lp.car_id = c.id WHERE `)
+
+	queryBuilder.WriteString(`
+	SELECT
+		c.id,
+		c.public_id,
+		c.make,
+		c.model,
+		c.trim,
+		c.year,
+		c.vin,
+		c.created_at,
+		c.updated_at
+	FROM cars c
+	WHERE `)
+
+	if strings.TrimSpace(input.VIN) != "" {
+		queryArgs = append(queryArgs, strings.TrimSpace(input.VIN))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.vin = $%d", len(conditionalQueryArgs)))
+	}
+
+	if strings.TrimSpace(input.PublicId) != "" {
+		queryArgs = append(queryArgs, strings.TrimSpace(input.PublicId))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.public_id =  = $%d", len(conditionalQueryArgs)))
+	}
+
+	if strings.TrimSpace(input.Id) != "" {
+		queryArgs = append(queryArgs, strings.TrimSpace(input.Id))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.id =  = $%d", len(conditionalQueryArgs)))
+	}
+
+	// if strings.TrimSpace(input.PlateNumber) != "" {
+	// 	queryArgs = append(queryArgs, strings.TrimSpace(input.PlateNumber))
+	// 	queryArgs = append(queryArgs, strings.TrimSpace(input.PlateState))
+	// 	conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("(lp.plate_number = $%d  AND lp.state = $%d)", len(conditionalQueryArgs)-1, len(conditionalQueryArgs)))
+	// }
+
+	queryBuilder.WriteString(strings.Join(conditionalQueryArgs, " OR "))
+
+	var c Car
+	row := s.db.QueryRow(ctx, queryBuilder.String(), queryArgs...)
+	if err := row.Scan(&c.id, &c.publicId, &c.Make, &c.Model, &c.Trim,
+		&c.Year, &c.VIN, &c.createdAt, &c.updatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GetCarOutput{}, ErrNotFound
+		}
+		return GetCarOutput{}, fmt.Errorf("failed to query for car: %w", err)
+	}
+
+	return GetCarOutput{
+		Car:       c,
+		Id:        c.id,
+		PublicId:  c.publicId,
+		CreatedAt: c.createdAt,
+		UpdatedAt: c.updatedAt,
+	}, nil
 }

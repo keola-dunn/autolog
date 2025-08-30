@@ -194,8 +194,9 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler
 			router.With(authHandler.RequireTokenAuthentication).Get("/", nil)
 
 			// GET search for car
+			// search by vin, ID, plate, etc.
 			// public or authenticated
-			router.Get("/search", nil)
+			router.Get("/lookup", nil)
 
 			// PUT car if acquired
 			// authenticated only

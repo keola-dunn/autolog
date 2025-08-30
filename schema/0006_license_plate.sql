@@ -4,6 +4,7 @@ ALTER TABLE cars ADD COLUMN IF NOT EXISTS color varchar(256);
 
 CREATE TABLE IF NOT EXISTS license_plates (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    car_id uuid NOT NULL references cars(id),
     plate_number varchar(8), 
     state varchar(2),
     country varchar(3) DEFAULT 'us',

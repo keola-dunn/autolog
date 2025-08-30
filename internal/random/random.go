@@ -10,6 +10,7 @@ import (
 type ServiceIface interface {
 	RandomUUID() (string, error)
 	RandomString(int64) string
+	RandomUpperAlphanumericString(length int64) string
 }
 
 func NewService() *Service {
@@ -34,6 +35,16 @@ func (s *Service) RandomString(length int64) string {
 	b := make([]rune, length)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+var upperAlphanumericRunes = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+
+func (s *Service) RandomUpperAlphanumericString(length int64) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(upperAlphanumericRunes))]
 	}
 	return string(b)
 }

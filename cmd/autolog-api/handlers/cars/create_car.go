@@ -17,6 +17,7 @@ type createCarRequest struct {
 	Model string `json:"model"`
 	Year  int64  `json:"year"`
 	Trim  string `json:"trim"`
+	Color string `json:"color"`
 }
 
 //type createCarResponse struct {}
@@ -25,13 +26,13 @@ func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 	logEntry := logger.GetLogEntry(r)
 
 	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
-	ok, token, err := autologjwt.VerifyToken(authToken, h.jwtSecret)
+	valid, token, err := autologjwt.VerifyToken(authToken, h.jwtSecret)
 	if err != nil {
 		logEntry.Error("failed to verify token", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
-	if !ok {
+	if !valid {
 		logEntry.Error("auth token is invalid", err)
 		httputil.RespondWithError(w, http.StatusForbidden, "")
 		return
@@ -51,15 +52,18 @@ func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token.GetUserId()
-
-	h.carService.CreateCar(r.Context(), token.GetUserId(), car.Car{
+	if err := h.carService.CreateCar(r.Context(), token.GetUserId(), car.Car{
 		Make:  req.Make,
 		Model: req.Model,
 		Year:  req.Year,
 		Trim:  req.Trim,
 		VIN:   req.VIN,
-	})
+		Color: req.Color,
+	}); err != nil {
+		logEntry.Error("failed to create car", err)
+		httputil.RespondWithError(w, http.StatusInternalServerError, "")
+		return
+	}
 
-	httputil.RespondWithJSON(w, http.StatusOK, req)
+	httputil.RespondWithJSON(w, http.StatusCreated, req)
 }
