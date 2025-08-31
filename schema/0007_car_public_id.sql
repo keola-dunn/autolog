@@ -6,9 +6,6 @@ ALTER TABLE cars ADD COLUMN IF NOT EXISTS manufacture_city varchar(256);
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS manufacture_state varchar(256); 
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS manufacture_country varchar(256); 
 
-DisplacementCI                      string `json:"DisplacementCI"`
-DisplacementL                       string `json:"DisplacementL"`
-
 CREATE INDEX IF NOT EXISTS idx_cars_public_id ON cars(public_id);
 
 -- +goose Down
