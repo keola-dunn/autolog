@@ -41,7 +41,7 @@ func (c *Car) PublicId() string {
 	return c.publicId
 }
 
-func (s *Service) CreateCar(ctx context.Context, userId string, car Car) error {
+func (s *Service) CreateCar(ctx context.Context, userId string, car Car, nhtsaData NHTSAVPICData) error {
 	if s.db == nil {
 		return ErrMissingRequiredConfiguration
 	}
@@ -70,6 +70,11 @@ func (s *Service) CreateCar(ctx context.Context, userId string, car Car) error {
 
 	if _, err := createUserCarRecord(ctx, tx, userId, carId); err != nil {
 		return fmt.Errorf("failed to create user car record: %w", err)
+	}
+
+	nhtsaData.carId = carId
+	if err := createNHTSAVPICDataRecord(ctx, tx, nhtsaData); err != nil {
+		return fmt.Errorf("failed to create nhtsa vpic data record: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
