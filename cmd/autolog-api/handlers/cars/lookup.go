@@ -36,6 +36,7 @@ type lookupResponse struct {
 	Make         string               `json:"make"`
 	Model        string               `json:"model"`
 	Color        string               `json:"color"`
+	Trim         string               `json:"trim"`
 
 	//TransmissionStyle string `json:"transmissionStyle"`
 
@@ -132,6 +133,22 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 		Make:         getCarOutput.Make,
 		Model:        getCarOutput.Model,
 		Color:        getCarOutput.Color,
+	}
+
+	if strings.TrimSpace(userId) != "" {
+		// authed user
+
+	} else {
+		// public request
+		serviceLogSummary, err := h.carService.GetServiceLogSummary(r.Context(), carId)
+		if err != nil {
+			if errors.Is(err, car.ErrNotFound) {
+				// no existing records found
+			}
+			httputil.RespondWithError(w, http.StatusInternalServerError, "")
+			return
+		}
+
 	}
 
 	httputil.RespondWithJSON(w, http.StatusOK, response)

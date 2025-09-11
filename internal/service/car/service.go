@@ -29,6 +29,8 @@ type ServiceIface interface {
 	CreateServiceLog(ctx context.Context, serviceLog ServiceLog, userId, carId string) (string, error)
 	CreateCar(ctx context.Context, userId string, car Car, nhtsaData NHTSAVPICData) error
 	GetCar(ctx context.Context, input GetCarInput) (GetCarOutput, error)
+
+	GetServiceLogSummary(ctx context.Context, carId string) (ServiceLogSummary, error)
 }
 
 type Service struct {

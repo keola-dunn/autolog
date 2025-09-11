@@ -17,3 +17,23 @@ Future State
 - Reminders for service intervals 
 - Info on makes/models and maintenance 
 - Insurers would love this data...I'm sure there's a correlation between maintenance and responsibility that could be tracked here. 
+
+
+## TODO:
+- [ ] Image Server
+- [ ] Auth Server 
+- [ ] Headless CMS for articles (future state)
+- [ ] Eventing server (future state)
+- [ ] Create postgres schemas instead of one schema? 
+- [ ] For self hosted - K8, especially since I'm potentially rolling out so many different servers
+- [ ] DB Backup System
+- [ ] Logs - Wazuh vs Greylog
+- [ ] Hosting - Cloudflare tunnels for selfhosted? 
+- [ ] Login with Google?
+- [ ] Web App - Vue or React, knowing that I'll probably do ReactNative for Mobile?
+
+
+### Auth Flow
+If moving the Auth to it's own Auth server, need to switch JWT encryption to pub/priv key instead of secret string 
+https://stackoverflow.com/questions/60538047/jwt-private-public-key-confusion
+![auth flow](./assets/AuthFlow.png "Beautiful Mountain View")
