@@ -18,6 +18,16 @@ Future State
 - Info on makes/models and maintenance 
 - Insurers would love this data...I'm sure there's a correlation between maintenance and responsibility that could be tracked here. 
 
+## Servers
+- [Autolog API](./cmd/autolog-api/)
+- [Auth Server](./cmd/auth/)
+- [Image Server](./cmd/image/)
+
+## Docker Compose
+As a multi-container app, can run all required Servers via Docker Compose
+```bash
+docker compose up
+```
 
 ## TODO:
 - [ ] Image Server

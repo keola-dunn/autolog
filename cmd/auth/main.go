@@ -134,6 +134,9 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 	// TODO: add auth to this endpoint to prevent public access
 	router.Mount("/debug", middleware.Profiler())
 
+	// TODO: build out to expose the public key for jwt encryption
+	router.Get("/well-known/jwks.json", nil)
+
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/auth", func(router chi.Router) {
 			router.Post("/login", authHandler.Login)
@@ -153,7 +156,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Autolog Maintenance Log API!"))
+	w.Write([]byte("KoalaGarage Auth Server!"))
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
