@@ -49,8 +49,8 @@ func (c *ConnectionConfig) connectionString() string {
 	// }
 
 	var connStr strings.Builder
-	connStr.WriteString(fmt.Sprintf("user=%s password=%s host=%s port=%d sslmode=%s",
-		c.User, c.Password, c.Host, c.Port, c.SSLMode))
+	connStr.WriteString(fmt.Sprintf("user=%s password=%s host=%s port=%d",
+		c.User, c.Password, c.Host, c.Port))
 
 	if strings.TrimSpace(c.SSLMode) != "" {
 		connStr.WriteString(fmt.Sprintf(" sslmode=%s", c.SSLMode))
