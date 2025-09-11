@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
 	"github.com/keola-dunn/autolog/internal/httputil"
@@ -50,7 +51,17 @@ type lookupResponse struct {
 	///////////////
 	// from service records tables
 	///////////////
+	ServiceLogSummary lookupResponseServiceLogSummary `json:"serviceLogSummary"`
+}
 
+type lookupResponseServiceLogSummary struct {
+	Services map[string]serviceSummary `json:"services"`
+}
+
+type serviceSummary struct {
+	Count              int64     `json:"count"`
+	LastService        time.Time `json:"lastService"`
+	LastServiceMileage int64     `json:"lastServiceMileage"`
 }
 
 type lookupResponseAuthenticated struct {
@@ -149,6 +160,19 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var sls = lookupResponseServiceLogSummary{
+			Services: make(map[string]serviceSummary),
+		}
+
+		for svc, summary := range serviceLogSummary.Services {
+			sls.Services[svc] = serviceSummary{
+				Count:              int64(summary.Count),
+				LastService:        summary.LastService,
+				LastServiceMileage: summary.LastServiceMileage,
+			}
+		}
+
+		response.ServiceLogSummary = sls
 	}
 
 	httputil.RespondWithJSON(w, http.StatusOK, response)
