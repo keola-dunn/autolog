@@ -16,13 +16,13 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 	}
 
 	jwtToken, err := autologjwt.CreateJWT(autologjwt.CreateJWTInput{
-		Issuer:      h.jwtIssuer,
-		UserId:      userId,
-		IssuedAt:    now,
-		ExpiresAt:   now.Add(time.Duration(h.jwtExpiryLengthMinutes) * time.Minute),
-		NotBefore:   now,
-		Id:          tokenId,
-		TokenSecret: h.jwtSecret,
+		Issuer:     h.jwtIssuer,
+		UserId:     userId,
+		IssuedAt:   now,
+		ExpiresAt:  now.Add(time.Duration(h.jwtExpiryLengthMinutes) * time.Minute),
+		NotBefore:  now,
+		Id:         tokenId,
+		PrivateKey: h.jwtPrivateKey,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create jwt: %w", err)

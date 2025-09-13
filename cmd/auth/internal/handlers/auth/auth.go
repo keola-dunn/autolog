@@ -20,10 +20,13 @@ type AuthHandler struct {
 
 	// services
 	userService user.ServiceIface
+
+	jwtPublicKey  []byte
+	jwtPrivateKey []byte
 }
 
 type AuthHandlerConfig struct {
-	JWTSecret              string
+	// JWTSecret              string
 	JWTIssuer              string
 	JWTExpiryLengthMinutes int64
 
@@ -34,11 +37,14 @@ type AuthHandlerConfig struct {
 
 	// services
 	UserService user.ServiceIface
+
+	JWTPublicKey  []byte
+	JWTPrivateKey []byte
 }
 
 func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
 	return &AuthHandler{
-		jwtSecret:              config.JWTSecret,
+		//jwtSecret:              config.JWTSecret,
 		jwtIssuer:              config.JWTIssuer,
 		jwtExpiryLengthMinutes: config.JWTExpiryLengthMinutes,
 
@@ -47,5 +53,8 @@ func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
 		logger:          config.Logger,
 
 		userService: config.UserService,
+
+		jwtPublicKey:  config.JWTPublicKey,
+		jwtPrivateKey: config.JWTPrivateKey,
 	}
 }

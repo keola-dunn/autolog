@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,8 +30,11 @@ var environmentConfig struct {
 	DBPort     int64  `envconfig:"DB_PORT"`
 	DBSchema   string `envconfig:"DB_SCHEMA" default:"postgres"`
 
-	JWTSecret              string `envconfig:"JWT_SECRET"`
-	JWTExpiryLengthMinutes int64  `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
+	// JWTSecret              string `envconfig:"JWT_SECRET"`
+	JWTExpiryLengthMinutes int64 `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
+
+	JWTPublicKeyPath  string `envconfig:"JWT_PUBLIC_KEY_PATH" required:"true"`
+	JWTPrivateKeyPath string `envconfig:"JWT_PRIVATE_KEY_PATH" required:"true`
 }
 
 func main() {
@@ -42,6 +47,30 @@ func main() {
 
 	if err := envconfig.Process("", &environmentConfig); err != nil {
 		logger.Fatal("failed to process environment config", err)
+	}
+
+	publicKeyFile, err := os.Open(environmentConfig.JWTPublicKeyPath)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("failed to open jwt public key: %s",
+			environmentConfig.JWTPublicKeyPath), err)
+	}
+	defer publicKeyFile.Close()
+
+	jwtPublicKey, err := io.ReadAll(publicKeyFile)
+	if err != nil {
+		logger.Fatal("failed to read public key file", err)
+	}
+
+	privateKeyFile, err := os.Open(environmentConfig.JWTPrivateKeyPath)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("failed to open jwt private key: %s",
+			environmentConfig.JWTPrivateKeyPath), err)
+	}
+	defer privateKeyFile.Close()
+
+	jwtPrivateKey, err := io.ReadAll(privateKeyFile)
+	if err != nil {
+		logger.Fatal("failed to read private key file", err)
 	}
 
 	///////////////////////////////////////
@@ -76,13 +105,15 @@ func main() {
 	})
 
 	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
-		JWTSecret:              environmentConfig.JWTSecret,
+		//JWTSecret:              environmentConfig.JWTSecret,
 		JWTIssuer:              "",
 		JWTExpiryLengthMinutes: environmentConfig.JWTExpiryLengthMinutes,
 		CalendarService:        calendarSvc,
 		RandomGenerator:        randomSvc,
 		Logger:                 logger,
 		UserService:            userSvc,
+		JWTPublicKey:           jwtPublicKey,
+		JWTPrivateKey:          jwtPrivateKey,
 	})
 
 	// create router using handlers

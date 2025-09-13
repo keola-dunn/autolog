@@ -28,9 +28,6 @@ var environmentConfig struct {
 	DBPassword string `envconfig:"DB_PASSWORD"`
 	DBHost     string `envconfig:"DB_HOST"`
 	DBPort     int64  `envconfig:"DB_PORT"`
-
-	JWTSecret              string `envconfig:"JWT_SECRET"`
-	JWTExpiryLengthMinutes int64  `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
 }
 
 func main() {
@@ -168,17 +165,10 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler
 	router.Mount("/debug", middleware.Profiler())
 
 	router.Route("/v1", func(router chi.Router) {
-		router.Route("/auth", func(router chi.Router) {
-			router.Post("/login", authHandler.Login)
-			router.Post("/signup", authHandler.SignUp)
-
-			router.Get("/security-questions", authHandler.GetSecurityQuestions)
-		})
-
 		router.Route("/users", func(router chi.Router) {
 			// GET user details
 			// authenticated only
-			router.With(authHandler.RequireTokenAuthentication).Get("/", authHandler.GetUser)
+			router.With(authHandler.RequireTokenAuthentication).Get("/", nil)
 		})
 
 		router.Route("/shops", func(router chi.Router) {

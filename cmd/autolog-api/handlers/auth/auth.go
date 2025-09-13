@@ -8,29 +8,22 @@ import (
 )
 
 type AuthHandler struct {
-	// configs
-	jwtSecret              string
-	jwtIssuer              string
-	jwtExpiryLengthMinutes int64
-
 	// foundationals/platform
 	calendarService calendar.ServiceIface
-	randomGenerator random.ServiceIface
-	logger          *logger.Logger
+
+	publicKey []byte
 
 	// services
 	userService user.ServiceIface
 }
 
 type AuthHandlerConfig struct {
-	JWTSecret              string
-	JWTIssuer              string
-	JWTExpiryLengthMinutes int64
-
 	// foundationals/platform
 	CalendarService calendar.ServiceIface
 	RandomGenerator random.ServiceIface
 	Logger          *logger.Logger
+
+	PublicKey []byte
 
 	// services
 	UserService user.ServiceIface
@@ -38,13 +31,8 @@ type AuthHandlerConfig struct {
 
 func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
 	return &AuthHandler{
-		jwtSecret:              config.JWTSecret,
-		jwtIssuer:              config.JWTIssuer,
-		jwtExpiryLengthMinutes: config.JWTExpiryLengthMinutes,
-
 		calendarService: config.CalendarService,
-		randomGenerator: config.RandomGenerator,
-		logger:          config.Logger,
+		publicKey:       config.PublicKey,
 
 		userService: config.UserService,
 	}

@@ -32,10 +32,16 @@ func (a *AutologAPIJWTClaims) GetUserId() string {
 
 // VerifyToken makes sure the token is valid. Returns boolean indicating if the token
 // is valid, the user id associated with the token, and an error
-func VerifyToken(tokenString, jwtSecret string) (bool, AutologAPIJWTClaims, error) {
+func VerifyToken(tokenString string, publicKey []byte) (bool, AutologAPIJWTClaims, error) {
+	_, err := jwt.ParseRSAPublicKeyFromPEM(publicKey)
+	if err != nil {
+		return false, AutologAPIJWTClaims{}, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
 	var claims AutologAPIJWTClaims
+
 	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (any, error) {
-		return []byte(jwtSecret), nil
+		return publicKey, nil
 	})
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -71,8 +77,8 @@ type CreateJWTInput struct {
 	// Id is the ID of the token
 	Id string
 
-	// TokenSecret is the secret value used to sign the token. This is not a public value.
-	TokenSecret string
+	// TokenSecret is the private key used to sign the token. This is not a public value.
+	PrivateKey []byte
 }
 
 func CreateJWT(input CreateJWTInput) (string, error) {
@@ -92,7 +98,7 @@ func CreateJWT(input CreateJWTInput) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, myClaims)
 
-	jwtToken, err := token.SignedString([]byte(input.TokenSecret))
+	jwtToken, err := token.SignedString(input.PrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign jwt: %w", err)
 	}
