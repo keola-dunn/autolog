@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
+	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
 )
 
 func (h *AuthHandler) createJWT(userId string) (string, error) {

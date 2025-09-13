@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strconv"
 
-	autologjwt "github.com/keola-dunn/autolog/cmd/autolog-api/jwt"
 	"github.com/keola-dunn/autolog/internal/httputil"
+	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
 	"github.com/keola-dunn/autolog/internal/service/car"
