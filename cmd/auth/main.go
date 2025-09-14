@@ -104,17 +104,19 @@ func main() {
 		RandomGenerator: randomSvc,
 	})
 
-	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
-		//JWTSecret:              environmentConfig.JWTSecret,
+	authHandler, err := auth.NewAuthHandler(auth.AuthHandlerConfig{
 		JWTIssuer:              "auth-api",
 		JWTExpiryLengthMinutes: environmentConfig.JWTExpiryLengthMinutes,
 		CalendarService:        calendarSvc,
 		RandomGenerator:        randomSvc,
 		Logger:                 logger,
 		UserService:            userSvc,
-		JWTPublicKey:           jwtPublicKey,
-		JWTPrivateKey:          jwtPrivateKey,
+		JWTPublicKeyData:       jwtPublicKey,
+		JWTPrivateKeyData:      jwtPrivateKey,
 	})
+	if err != nil {
+		logger.Fatal("failed to create new auth handler", err)
+	}
 
 	// create router using handlers
 	router := newRouter(logger, authHandler)

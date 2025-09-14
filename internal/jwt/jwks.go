@@ -1,13 +1,9 @@
 package jwt
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
@@ -16,6 +12,7 @@ var (
 
 // JWK and JWKS are documented here by Auth0:
 // https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets
+// https://stackoverflow.com/questions/75031229/expose-public-jwk-in-go
 
 // JWKS is a JSON Web Key Set
 type JWKS struct {
@@ -67,23 +64,4 @@ type JWK struct {
 
 func (j *JWK) ToBytes() ([]byte, error) {
 	return json.Marshal(j)
-}
-
-func ConvertPublicKeyPEMToJWK(KeyId string, key []byte) (JWK, error) {
-	k, err := jwt.ParseRSAPublicKeyFromPEM(key)
-	if err != nil {
-		return JWK{}, fmt.Errorf("failed to parse public key from pem: %w", err)
-	}
-
-	n := base64.RawURLEncoding.EncodeToString((*k.N).Bytes())
-	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(k.E)).Bytes())
-
-	return JWK{
-		Kty: "RSA",
-		KId: KeyId,
-		Use: "sig",
-		N:   n,
-		E:   e,
-	}, nil
-
 }

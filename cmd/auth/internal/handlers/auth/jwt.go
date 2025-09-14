@@ -22,7 +22,7 @@ func (h *AuthHandler) createJWT(userId string) (string, error) {
 		ExpiresAt:  now.Add(time.Duration(h.jwtExpiryLengthMinutes) * time.Minute),
 		NotBefore:  now,
 		Id:         tokenId,
-		PrivateKey: h.jwtPrivateKey,
+		PrivateKey: h.jwtPrivateKeyData,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create jwt: %w", err)

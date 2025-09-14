@@ -1,6 +1,10 @@
 package auth
 
 import (
+	"crypto/rsa"
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/random"
@@ -20,8 +24,11 @@ type AuthHandler struct {
 	// services
 	userService user.ServiceIface
 
-	jwtPublicKey  []byte
-	jwtPrivateKey []byte
+	jwtPublicKeyData []byte
+	jwtPublicKey     *rsa.PublicKey
+
+	jwtPrivateKeyData []byte
+	jwtPrivateKey     *rsa.PrivateKey
 }
 
 type AuthHandlerConfig struct {
@@ -36,11 +43,20 @@ type AuthHandlerConfig struct {
 	// services
 	UserService user.ServiceIface
 
-	JWTPublicKey  []byte
-	JWTPrivateKey []byte
+	JWTPublicKeyData  []byte
+	JWTPrivateKeyData []byte
 }
 
-func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
+func NewAuthHandler(config AuthHandlerConfig) (*AuthHandler, error) {
+	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(config.JWTPublicKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
+	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(config.JWTPrivateKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
 	return &AuthHandler{
 		jwtIssuer:              config.JWTIssuer,
 		jwtExpiryLengthMinutes: config.JWTExpiryLengthMinutes,
@@ -51,7 +67,9 @@ func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
 
 		userService: config.UserService,
 
-		jwtPublicKey:  config.JWTPublicKey,
-		jwtPrivateKey: config.JWTPrivateKey,
-	}
+		jwtPublicKeyData:  config.JWTPublicKeyData,
+		jwtPublicKey:      pubKey,
+		jwtPrivateKeyData: config.JWTPrivateKeyData,
+		jwtPrivateKey:     privKey,
+	}, nil
 }

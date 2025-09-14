@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"strings"
@@ -40,7 +41,7 @@ type VerifyTokenInput struct {
 
 // VerifyToken makes sure the token is valid. Returns boolean indicating if the token
 // is valid, the user id associated with the token, and an error
-func VerifyToken(tokenString string, publicKey []byte) (bool, AutologAPIJWTClaims, error) {
+func VerifyToken(tokenString string, publicKey *rsa.PublicKey) (bool, AutologAPIJWTClaims, error) {
 	var claims AutologAPIJWTClaims
 
 	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (any, error) {

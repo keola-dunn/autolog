@@ -1,6 +1,10 @@
 package auth
 
 import (
+	"crypto/rsa"
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/random"
@@ -11,7 +15,8 @@ type AuthHandler struct {
 	// foundationals/platform
 	calendarService calendar.ServiceIface
 
-	publicKey []byte
+	publicKeyData []byte
+	publicKey     *rsa.PublicKey
 
 	// services
 	userService user.ServiceIface
@@ -23,17 +28,23 @@ type AuthHandlerConfig struct {
 	RandomGenerator random.ServiceIface
 	Logger          *logger.Logger
 
-	PublicKey []byte
+	PublicKeyData []byte
 
 	// services
 	UserService user.ServiceIface
 }
 
-func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
+func NewAuthHandler(config AuthHandlerConfig) (*AuthHandler, error) {
+	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(config.PublicKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
 	return &AuthHandler{
 		calendarService: config.CalendarService,
-		publicKey:       config.PublicKey,
 
 		userService: config.UserService,
-	}
+
+		publicKeyData: config.PublicKeyData,
+		publicKey:     pubKey,
+	}, nil
 }

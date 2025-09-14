@@ -101,22 +101,29 @@ func main() {
 	// API Handler Creations //
 	///////////////////////////
 
-	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
+	authHandler, err := auth.NewAuthHandler(auth.AuthHandlerConfig{
 		CalendarService: calendarSvc,
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 		UserService:     userSvc,
-		PublicKey:       jwtPublicKey,
+		PublicKeyData:   jwtPublicKey,
 	})
+	if err != nil {
+		logger.Fatal("failed to create auth handler", err)
+	}
 
-	carsHandler := cars.NewCarsHandler(cars.CarsHandlerConfig{
+	carsHandler, err := cars.NewCarsHandler(cars.CarsHandlerConfig{
 		CalendarService: calendarSvc,
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 
-		UserService: userSvc,
-		CarService:  carSvc,
+		UserService:      userSvc,
+		CarService:       carSvc,
+		JWTPublicKeyData: jwtPublicKey,
 	})
+	if err != nil {
+		logger.Fatal("failed to create cars handler", err)
+	}
 
 	// create router using handlers
 	router := newRouter(logger, authHandler, carsHandler)

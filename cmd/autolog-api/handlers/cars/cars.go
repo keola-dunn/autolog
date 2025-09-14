@@ -1,6 +1,10 @@
 package cars
 
 import (
+	"crypto/rsa"
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/logger"
 	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
@@ -21,7 +25,8 @@ type CarsHandler struct {
 
 	nhtsaClient nhtsavpic.ClientIface
 
-	jwtPublicKey []byte
+	jwtPublicKeyData []byte
+	publicKey        *rsa.PublicKey
 }
 
 type CarsHandlerConfig struct {
@@ -36,10 +41,15 @@ type CarsHandlerConfig struct {
 
 	NHTSAClient nhtsavpic.ClientIface
 
-	JWTPublicKey []byte
+	JWTPublicKeyData []byte
 }
 
-func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
+func NewCarsHandler(config CarsHandlerConfig) (*CarsHandler, error) {
+	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(config.JWTPublicKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
 	return &CarsHandler{
 		calendarService: config.CalendarService,
 		randomGenerator: config.RandomGenerator,
@@ -50,6 +60,7 @@ func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
 
 		nhtsaClient: config.NHTSAClient,
 
-		jwtPublicKey: config.JWTPublicKey,
-	}
+		jwtPublicKeyData: config.JWTPublicKeyData,
+		publicKey:        pubKey,
+	}, nil
 }
