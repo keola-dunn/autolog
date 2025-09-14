@@ -34,7 +34,7 @@ var environmentConfig struct {
 	JWTExpiryLengthMinutes int64 `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
 
 	JWTPublicKeyPath  string `envconfig:"JWT_PUBLIC_KEY_PATH" required:"true"`
-	JWTPrivateKeyPath string `envconfig:"JWT_PRIVATE_KEY_PATH" required:"true`
+	JWTPrivateKeyPath string `envconfig:"JWT_PRIVATE_KEY_PATH" required:"true"`
 }
 
 func main() {
