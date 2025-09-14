@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/cars"
 	"github.com/keola-dunn/autolog/internal/calendar"
+	authclient "github.com/keola-dunn/autolog/internal/client/auth"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
@@ -66,6 +68,21 @@ func main() {
 
 	calendarSvc := calendar.NewService()
 
+	authClient, err := authclient.NewClient("")
+	if err != nil {
+		logger.Fatal("failed to create new auth client: %w", err)
+	}
+
+	jwks, err := authClient.GetWellKnownJWKS(context.Background())
+	if err != nil {
+		logger.Fatal("failed to get well known jwks: %w", err)
+	}
+
+	jwtPublicKey, err := jwks.GetKey("autolog-public-key")
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("failed to get jwt public key %s", "autolog-public-key"), err)
+	}
+
 	///////////////////////
 	// Service Creations //
 	///////////////////////
@@ -85,13 +102,11 @@ func main() {
 	///////////////////////////
 
 	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
-		JWTSecret:              environmentConfig.JWTSecret,
-		JWTIssuer:              "",
-		JWTExpiryLengthMinutes: environmentConfig.JWTExpiryLengthMinutes,
-		CalendarService:        calendarSvc,
-		RandomGenerator:        randomSvc,
-		Logger:                 logger,
-		UserService:            userSvc,
+		CalendarService: calendarSvc,
+		RandomGenerator: randomSvc,
+		Logger:          logger,
+		UserService:     userSvc,
+		PublicKey:       jwtPublicKey,
 	})
 
 	carsHandler := cars.NewCarsHandler(cars.CarsHandlerConfig{
@@ -101,7 +116,6 @@ func main() {
 
 		UserService: userSvc,
 		CarService:  carSvc,
-		JWTSecret:   environmentConfig.JWTSecret,
 	})
 
 	// create router using handlers

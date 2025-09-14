@@ -106,7 +106,7 @@ func main() {
 
 	authHandler := auth.NewAuthHandler(auth.AuthHandlerConfig{
 		//JWTSecret:              environmentConfig.JWTSecret,
-		JWTIssuer:              "",
+		JWTIssuer:              "auth-api",
 		JWTExpiryLengthMinutes: environmentConfig.JWTExpiryLengthMinutes,
 		CalendarService:        calendarSvc,
 		RandomGenerator:        randomSvc,
@@ -128,7 +128,7 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("starting server...")
+		logger.Info("starting auth server...")
 		// TODO: convert to ListenAndServeTLS
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal("listen and serve server error", err)
@@ -166,7 +166,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler) *chi.Mux {
 	router.Mount("/debug", middleware.Profiler())
 
 	// TODO: build out to expose the public key for jwt encryption
-	router.Get("/well-known/jwks.json", nil)
+	router.Get("/.well-known/jwks.json", authHandler.GetWellKnownJWKS)
 
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/auth", func(router chi.Router) {

@@ -39,7 +39,7 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 
 		token := splitToken[1]
 
-		valid, _, err := autologjwt.VerifyToken(token, a.jwtSecret)
+		valid, _, err := autologjwt.VerifyToken(token, a.jwtPublicKey)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
 				httputil.RespondWithError(w, http.StatusUnauthorized, "token expired")

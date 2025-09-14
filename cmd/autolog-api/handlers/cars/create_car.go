@@ -29,7 +29,7 @@ func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 	logEntry := logger.GetLogEntry(r)
 
 	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
-	valid, token, err := autologjwt.VerifyToken(authToken, h.jwtSecret)
+	valid, token, err := autologjwt.VerifyToken(authToken, h.jwtPublicKey)
 	if err != nil {
 		logEntry.Error("failed to verify token", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")

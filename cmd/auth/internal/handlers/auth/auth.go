@@ -9,7 +9,6 @@ import (
 
 type AuthHandler struct {
 	// configs
-	jwtSecret              string
 	jwtIssuer              string
 	jwtExpiryLengthMinutes int64
 
@@ -26,7 +25,6 @@ type AuthHandler struct {
 }
 
 type AuthHandlerConfig struct {
-	// JWTSecret              string
 	JWTIssuer              string
 	JWTExpiryLengthMinutes int64
 
@@ -44,7 +42,6 @@ type AuthHandlerConfig struct {
 
 func NewAuthHandler(config AuthHandlerConfig) *AuthHandler {
 	return &AuthHandler{
-		//jwtSecret:              config.JWTSecret,
 		jwtIssuer:              config.JWTIssuer,
 		jwtExpiryLengthMinutes: config.JWTExpiryLengthMinutes,
 

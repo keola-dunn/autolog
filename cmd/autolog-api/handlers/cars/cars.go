@@ -21,7 +21,7 @@ type CarsHandler struct {
 
 	nhtsaClient nhtsavpic.ClientIface
 
-	jwtSecret string
+	jwtPublicKey []byte
 }
 
 type CarsHandlerConfig struct {
@@ -36,7 +36,7 @@ type CarsHandlerConfig struct {
 
 	NHTSAClient nhtsavpic.ClientIface
 
-	JWTSecret string
+	JWTPublicKey []byte
 }
 
 func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
@@ -50,6 +50,6 @@ func NewCarsHandler(config CarsHandlerConfig) *CarsHandler {
 
 		nhtsaClient: config.NHTSAClient,
 
-		jwtSecret: config.JWTSecret,
+		jwtPublicKey: config.JWTPublicKey,
 	}
 }
