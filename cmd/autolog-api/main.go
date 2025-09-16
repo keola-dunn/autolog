@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,7 +16,7 @@ import (
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/auth"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/handlers/cars"
 	"github.com/keola-dunn/autolog/internal/calendar"
-	authclient "github.com/keola-dunn/autolog/internal/client/auth"
+	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
@@ -30,6 +29,11 @@ var environmentConfig struct {
 	DBPassword string `envconfig:"DB_PASSWORD"`
 	DBHost     string `envconfig:"DB_HOST"`
 	DBPort     int64  `envconfig:"DB_PORT"`
+	DBSchema   string `envconfig:"DB_SCHEMA"`
+
+	//AuthAPIHost string `envconfig:"AUTH_API_HOST"`
+
+	JWKSUrl string `envconfig:"JWKS_URL"`
 }
 
 func main() {
@@ -49,10 +53,12 @@ func main() {
 	///////////////////////////////////////
 	logger.Info("connecting to the database...")
 	db, err := postgres.NewConnectionPool(context.Background(), postgres.ConnectionPoolConfig{
-		ConnectionConfig: postgres.ConnectionConfig{User: environmentConfig.DBUser,
+		ConnectionConfig: postgres.ConnectionConfig{
+			User:     environmentConfig.DBUser,
 			Password: environmentConfig.DBPassword,
 			Host:     environmentConfig.DBHost,
 			Port:     environmentConfig.DBPort,
+			Schema:   environmentConfig.DBSchema,
 		},
 		MaxConnections:        5,
 		MinConnections:        1,
@@ -68,20 +74,35 @@ func main() {
 
 	calendarSvc := calendar.NewService()
 
-	authClient, err := authclient.NewClient("")
+	jwtVerifier, err := jwt.NewTokenVerifier(context.Background(), jwt.TokenVerifierConfig{
+		JWKSUrl: environmentConfig.JWKSUrl,
+	})
 	if err != nil {
-		logger.Fatal("failed to create new auth client: %w", err)
+		logger.Fatal("failed to create new jwt verifier", err)
 	}
 
-	jwks, err := authClient.GetWellKnownJWKS(context.Background())
-	if err != nil {
-		logger.Fatal("failed to get well known jwks: %w", err)
-	}
+	// authClient, err := authclient.NewClient(environmentConfig.AuthAPIHost)
+	// if err != nil {
+	// 	logger.Fatal("failed to create new auth client", err)
+	// }
 
-	jwtPublicKey, err := jwks.GetKey("autolog-public-key")
-	if err != nil {
-		logger.Fatal(fmt.Sprintf("failed to get jwt public key %s", "autolog-public-key"), err)
-	}
+	// var jwks *jwt.JWKS
+	// for i := 0; i < 3; i++ {
+	// 	jwks, err = authClient.GetWellKnownJWKS(context.Background())
+	// 	if err != nil {
+	// 		if i == 2 {
+	// 			logger.Fatal("failed to get well known jwks: %w", err)
+	// 		}
+	// 		logger.Error("failed to get well known jwks: %w", err)
+	// 		logger.Info("retrying jwks request...")
+	// 		time.Sleep(time.Second * 10)
+	// 	}
+	// }
+
+	// jwtPublicKey, err := jwks.GetKey("autolog-public-key")
+	// if err != nil {
+	// 	logger.Fatal(fmt.Sprintf("failed to get jwt public key %s", "autolog-public-key"), err)
+	// }
 
 	///////////////////////
 	// Service Creations //
@@ -106,7 +127,8 @@ func main() {
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 		UserService:     userSvc,
-		PublicKeyData:   jwtPublicKey,
+		TokenVerifier:   jwtVerifier,
+		//PublicKeyData:   jwtPublicKey,
 	})
 	if err != nil {
 		logger.Fatal("failed to create auth handler", err)
@@ -117,9 +139,10 @@ func main() {
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 
-		UserService:      userSvc,
-		CarService:       carSvc,
-		JWTPublicKeyData: jwtPublicKey,
+		UserService: userSvc,
+		CarService:  carSvc,
+		//JWTPublicKeyData: jwtPublicKey,
+		TokenVerifier: jwtVerifier,
 	})
 	if err != nil {
 		logger.Fatal("failed to create cars handler", err)
@@ -159,7 +182,7 @@ func main() {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Autolog Maintenance Log API!"))
+	w.Write([]byte("                _        _                        _____ _____ \n     /\\        | |      | |                 /\\   |  __ \\_   _|\n    /  \\  _   _| |_ ___ | | ___   __ _     /  \\  | |__) || |  \n   / /\\ \\| | | | __/ _ \\| |/ _ \\ / _` |   / /\\ \\ |  ___/ | |  \n  / ____ \\ |_| | || (_) | | (_) | (_| |  / ____ \\| |    _| |_ \n /_/    \\_\\__,_|\\__\\___/|_|\\___/ \\__, | /_/    \\_\\_|   |_____|\n                                  __/ |                       \n                                 |___/                        \n est. 2025 - Author: keola-dunn\n"))
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {

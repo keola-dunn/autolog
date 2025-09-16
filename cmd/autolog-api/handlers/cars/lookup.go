@@ -82,7 +82,7 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 
 	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
 	if strings.TrimSpace(authToken) != "" {
-		valid, token, err := autologjwt.VerifyToken(authToken, h.publicKey)
+		valid, token, err := h.jwtVerifier.VerifyToken(authToken)
 		if err != nil {
 			logEntry.Error("failed to verify token", err)
 			httputil.RespondWithError(w, http.StatusInternalServerError, "")

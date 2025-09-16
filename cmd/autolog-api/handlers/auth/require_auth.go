@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/httputil"
-	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 )
 
@@ -39,7 +38,7 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 
 		token := splitToken[1]
 
-		valid, _, err := autologjwt.VerifyToken(token, a.publicKey)
+		valid, _, err := a.jwtVerifier.VerifyToken(token)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
 				httputil.RespondWithError(w, http.StatusUnauthorized, "token expired")

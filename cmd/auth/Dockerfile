@@ -20,6 +20,8 @@ WORKDIR /app
 
 # Copy the compiled binary from the builder stage
 COPY --from=builder /app/auth-api .
+COPY --from=builder /app/private-key.pem .
+COPY --from=builder /app/public-key.pem .
 
 # Expose the port your application listens on (if applicable)
 EXPOSE 8080

@@ -28,7 +28,7 @@ var environmentConfig struct {
 	DBPassword string `envconfig:"DB_PASSWORD"`
 	DBHost     string `envconfig:"DB_HOST"`
 	DBPort     int64  `envconfig:"DB_PORT"`
-	DBSchema   string `envconfig:"DB_SCHEMA" default:"postgres"`
+	DBSchema   string `envconfig:"DB_SCHEMA"`
 
 	// JWTSecret              string `envconfig:"JWT_SECRET"`
 	JWTExpiryLengthMinutes int64 `envconfig:"JWT_EXPIRY_LENGTH_MINUTES" default:"30"`
