@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
-	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
+	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
 	"github.com/keola-dunn/autolog/internal/service/car"
@@ -28,16 +28,10 @@ type createCarRequest struct {
 func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 	logEntry := logger.GetLogEntry(r)
 
-	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
-	valid, token, err := h.jwtVerifier.VerifyToken(authToken)
-	if err != nil {
-		logEntry.Error("failed to verify token", err)
+	claims, ok := jwt.GetClaimsFromContext(r.Context())
+	if !ok {
+		logEntry.Error("failed to get jwt claims from context", nil)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
-		return
-	}
-	if !valid {
-		logEntry.Error("auth token is invalid", err)
-		httputil.RespondWithError(w, http.StatusForbidden, "")
 		return
 	}
 
@@ -88,7 +82,7 @@ func (h *CarsHandler) CreateCar(w http.ResponseWriter, r *http.Request) {
 	modelYear, _ := strconv.Atoi(decodedVINData.Results[0].ModelYear)
 	payload, _ := json.Marshal(decodedVINData.Results[0])
 
-	if err := h.carService.CreateCar(r.Context(), token.GetUserId(), car.Car{
+	if err := h.carService.CreateCar(r.Context(), claims.GetUserId(), car.Car{
 		Make:  req.Make,
 		Model: req.Model,
 		Year:  req.Year,

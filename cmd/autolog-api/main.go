@@ -81,29 +81,6 @@ func main() {
 		logger.Fatal("failed to create new jwt verifier", err)
 	}
 
-	// authClient, err := authclient.NewClient(environmentConfig.AuthAPIHost)
-	// if err != nil {
-	// 	logger.Fatal("failed to create new auth client", err)
-	// }
-
-	// var jwks *jwt.JWKS
-	// for i := 0; i < 3; i++ {
-	// 	jwks, err = authClient.GetWellKnownJWKS(context.Background())
-	// 	if err != nil {
-	// 		if i == 2 {
-	// 			logger.Fatal("failed to get well known jwks: %w", err)
-	// 		}
-	// 		logger.Error("failed to get well known jwks: %w", err)
-	// 		logger.Info("retrying jwks request...")
-	// 		time.Sleep(time.Second * 10)
-	// 	}
-	// }
-
-	// jwtPublicKey, err := jwks.GetKey("autolog-public-key")
-	// if err != nil {
-	// 	logger.Fatal(fmt.Sprintf("failed to get jwt public key %s", "autolog-public-key"), err)
-	// }
-
 	///////////////////////
 	// Service Creations //
 	///////////////////////
@@ -128,7 +105,6 @@ func main() {
 		Logger:          logger,
 		UserService:     userSvc,
 		TokenVerifier:   jwtVerifier,
-		//PublicKeyData:   jwtPublicKey,
 	})
 	if err != nil {
 		logger.Fatal("failed to create auth handler", err)
@@ -139,9 +115,8 @@ func main() {
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 
-		UserService: userSvc,
-		CarService:  carSvc,
-		//JWTPublicKeyData: jwtPublicKey,
+		UserService:   userSvc,
+		CarService:    carSvc,
 		TokenVerifier: jwtVerifier,
 	})
 	if err != nil {

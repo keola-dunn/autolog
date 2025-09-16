@@ -47,3 +47,10 @@ docker compose up
 If moving the Auth to it's own Auth server, need to switch JWT encryption to pub/priv key instead of secret string 
 https://stackoverflow.com/questions/60538047/jwt-private-public-key-confusion
 ![auth flow](./assets/AuthFlow.png "Beautiful Mountain View")
+
+## Notes:
+Test user details:
+"username":"TestUser1",
+"password":"Password",
+
+To start the app: `docker compose up --build`

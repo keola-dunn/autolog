@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
-	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
+	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/service/car"
 )
@@ -80,22 +80,13 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 	logEntry := logger.GetLogEntry(r)
 	var userId string
 
-	authToken := autologjwt.GetTokenFromAuthHeader(r.Header.Get("Authorization"))
-	if strings.TrimSpace(authToken) != "" {
-		valid, token, err := h.jwtVerifier.VerifyToken(authToken)
-		if err != nil {
-			logEntry.Error("failed to verify token", err)
-			httputil.RespondWithError(w, http.StatusInternalServerError, "")
-			return
-		}
-		if !valid {
-			logEntry.Error("auth token is invalid", err)
-			httputil.RespondWithError(w, http.StatusForbidden, "")
-			return
-		}
-
-		userId = token.GetUserId()
+	claims, ok := jwt.GetClaimsFromContext(r.Context())
+	if !ok {
+		logEntry.Error("failed to get jwt claims from context", nil)
+		httputil.RespondWithError(w, http.StatusInternalServerError, "")
+		return
 	}
+	userId = claims.GetUserId()
 
 	var queryParams = make(url.Values, len(r.URL.Query()))
 	for key, val := range r.URL.Query() {
