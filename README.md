@@ -53,4 +53,7 @@ Test user details:
 "username":"TestUser1",
 "password":"Password",
 
+Test VIN
+WZ1DB0C08NW046480
+
 To start the app: `docker compose up --build`

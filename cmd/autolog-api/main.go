@@ -18,6 +18,7 @@ import (
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
+	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
 	"github.com/keola-dunn/autolog/internal/service/car"
@@ -115,6 +116,8 @@ func main() {
 		RandomGenerator: randomSvc,
 		Logger:          logger,
 
+		NHTSAClient: nhtsavpic.New(),
+
 		UserService:   userSvc,
 		CarService:    carSvc,
 		TokenVerifier: jwtVerifier,
@@ -205,7 +208,7 @@ func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler
 			// GET search for car
 			// search by vin, ID, plate, etc.
 			// public or authenticated
-			router.Get("/lookup", nil)
+			router.With(authHandler.OptionalAuthentication).Get("/lookup", carsHandler.Lookup)
 
 			// PUT car if acquired
 			// authenticated only

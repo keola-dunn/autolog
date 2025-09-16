@@ -81,12 +81,9 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 	var userId string
 
 	claims, ok := jwt.GetClaimsFromContext(r.Context())
-	if !ok {
-		logEntry.Error("failed to get jwt claims from context", nil)
-		httputil.RespondWithError(w, http.StatusInternalServerError, "")
-		return
+	if ok {
+		userId = claims.GetUserId()
 	}
-	userId = claims.GetUserId()
 
 	var queryParams = make(url.Values, len(r.URL.Query()))
 	for key, val := range r.URL.Query() {
@@ -99,6 +96,13 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(queryParams.Get("id"))
 	// plateNumber := strings.TrimSpace(queryParams.Get("platenumber"))
 	// state := strings.TrimSpace(queryParams.Get("state"))
+
+	if strings.TrimSpace(vin) == "" &&
+		strings.TrimSpace(carId) == "" &&
+		strings.TrimSpace(id) == "" {
+		httputil.RespondWithError(w, http.StatusBadRequest, "Invalid argument. Expected vin, carid, or id.")
+		return
+	}
 
 	// decodeVINOutput, err := h.nhtsaClient.DecodeVINFlat(r.Context(), nhtsavpic.DecodeVINFlatInput{
 	// 	VIN: vin,

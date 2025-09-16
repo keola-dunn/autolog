@@ -67,3 +67,48 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 		next.ServeHTTP(w, r)
 	})
 }
+
+// OptionalAuthentication is a middleware that checks if a token is provided, and attaches it's claims
+// to the context if so
+func (a *AuthHandler) OptionalAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logEntry := logger.GetLogEntry(r)
+
+		authHeader := r.Header.Get("Authorization")
+		if strings.TrimSpace(authHeader) != "" {
+
+			splitToken := strings.Split(authHeader, "Bearer ")
+			if len(splitToken) == 2 && strings.Contains(authHeader, "Bearer") {
+				token := splitToken[1]
+
+				valid, claims, err := a.jwtVerifier.VerifyToken(token)
+				if err != nil {
+					if errors.Is(err, jwt.ErrTokenExpired) {
+						httputil.RespondWithError(w, http.StatusUnauthorized, "token expired")
+						return
+					}
+
+					logEntry.Error("failed to verify token", err)
+					httputil.RespondWithError(w, http.StatusInternalServerError, "")
+					return
+				}
+
+				if !valid {
+					// log failed auth attempts
+					logEntry.Warn("invalid token provided",
+						"token", token,
+						"referer", r.Header.Get("referer"),
+						"user-agent", r.Header.Get("user-agent"),
+						"x-forwarded-for", r.Header.Get("X-Forwarded-For"))
+
+					httputil.RespondWithError(w, http.StatusUnauthorized, "")
+					return
+				}
+
+				r = r.WithContext(autologjwt.SetClaimsInContext(r.Context(), claims))
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
