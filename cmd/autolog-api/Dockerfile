@@ -3,15 +3,11 @@ FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-# Copy go.mod and go.sum first to leverage Docker cache
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
 # Build the Go application, making sure it's a static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o autolog-api ./cmd/autolog-api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o autolog-api ./cmd/autolog-api/main.go
 
 # Stage 2: Runner
 FROM alpine:latest AS runner

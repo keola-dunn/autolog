@@ -25,4 +25,7 @@ services:
     ports:
       - "8081:8080"
     env_file: "./cmd/autolog-api/.env"
+    depends_on:
+      auth: 
+        condition: service_started #https://github.com/compose-spec/compose-spec/blob/main/spec.md
   

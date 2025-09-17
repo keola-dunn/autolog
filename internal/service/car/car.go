@@ -253,17 +253,17 @@ func (s *Service) GetCar(ctx context.Context, input GetCarInput) (GetCarOutput, 
 
 	if strings.TrimSpace(input.VIN) != "" {
 		queryArgs = append(queryArgs, strings.TrimSpace(input.VIN))
-		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.vin = $%d", len(conditionalQueryArgs)))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.vin = $%d", len(queryArgs)))
 	}
 
 	if strings.TrimSpace(input.PublicId) != "" {
 		queryArgs = append(queryArgs, strings.TrimSpace(input.PublicId))
-		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.public_id =  = $%d", len(conditionalQueryArgs)))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.public_id = $%d", len(queryArgs)))
 	}
 
 	if strings.TrimSpace(input.Id) != "" {
 		queryArgs = append(queryArgs, strings.TrimSpace(input.Id))
-		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.id =  = $%d", len(conditionalQueryArgs)))
+		conditionalQueryArgs = append(conditionalQueryArgs, fmt.Sprintf("c.id = $%d", len(queryArgs)))
 	}
 
 	// if strings.TrimSpace(input.PlateNumber) != "" {
