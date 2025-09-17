@@ -99,3 +99,8 @@ func GetLogEntry(r *http.Request) *Logger {
 	}
 	return le
 }
+
+func (l *Logger) With(args ...any) *Logger {
+	l.Logger = l.Logger.With(args...)
+	return l
+}

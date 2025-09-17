@@ -4,12 +4,14 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/keola-dunn/autolog/internal/httputil"
 	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
+	nhtsavpic "github.com/keola-dunn/autolog/internal/nhtsa"
 	"github.com/keola-dunn/autolog/internal/service/car"
 )
 
@@ -28,6 +30,11 @@ type lookupResponsePlate struct {
 }
 
 type lookupResponse struct {
+	///////////////
+	// autolog data
+	///////////////
+	AutologVehicle bool `json:"autologVehicle"`
+
 	///////////////
 	// from cars db tables
 	///////////////
@@ -104,19 +111,11 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// decodeVINOutput, err := h.nhtsaClient.DecodeVINFlat(r.Context(), nhtsavpic.DecodeVINFlatInput{
-	// 	VIN: vin,
-	// })
-	// if err != nil {
-	// 	logEntry.Error("failed to decode vin", err)
-	// 	httputil.RespondWithError(w, http.StatusInternalServerError, "")
-	// 	return
-	// }
+	var response lookupResponse
 
-	// if decodeVINOutput.Count <= 0 {
-	// 	logEntry.Error("vin not found")
-	// }
+	var isAutologVehicle = true
 
+	getCarStart := h.calendarService.NowUTC()
 	getCarOutput, err := h.carService.GetCar(r.Context(), car.GetCarInput{
 		VIN:      vin,
 		PublicId: carId,
@@ -124,21 +123,60 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, car.ErrNotFound) {
-			httputil.RespondWithError(w, http.StatusNotFound, "")
+			// not in our records yet, continue on
+			isAutologVehicle = false
+		} else {
+			logEntry.Error("failed to get car", err)
+			httputil.RespondWithError(w, http.StatusInternalServerError, "")
 			return
 		}
-		logEntry.Error("failed to get car", err)
+	}
+	// TODO: fix logging so that I can append fields to logs generated more easily
+	logEntry = logEntry.With("getCarDurationMs", time.Since(getCarStart).Milliseconds())
+
+	if isAutologVehicle {
+		response = lookupResponse{
+			AutologVehicle: isAutologVehicle,
+			VIN:            getCarOutput.VIN,
+			LicensePlate:   nil,
+			Year:           getCarOutput.Year,
+			Make:           getCarOutput.Make,
+			Model:          getCarOutput.Model,
+			Color:          getCarOutput.Color,
+		}
+		vin = getCarOutput.VIN
+	}
+
+	decodeVinStart := h.calendarService.NowUTC()
+	decodeVINOutput, err := h.nhtsaClient.DecodeVINFlat(r.Context(), nhtsavpic.DecodeVINFlatInput{
+		VIN: vin,
+	})
+	if err != nil {
+		logEntry.Error("failed to decode vin", err)
 		httputil.RespondWithError(w, http.StatusInternalServerError, "")
 		return
 	}
+	logEntry = logEntry.With("decodeVINDurationMs", time.Since(decodeVinStart).Milliseconds())
+	if decodeVINOutput.Count <= 0 {
+		logEntry.Error("vin not found in nhtsa", nil)
+	}
+	if decodeVINOutput.Count > 0 {
+		if !isAutologVehicle {
+			// not a autolog vehicle yet, use NHTSA data
 
-	response := lookupResponse{
-		VIN:          getCarOutput.VIN,
-		LicensePlate: nil,
-		Year:         getCarOutput.Year,
-		Make:         getCarOutput.Make,
-		Model:        getCarOutput.Model,
-		Color:        getCarOutput.Color,
+			year, _ := strconv.Atoi(decodeVINOutput.Results[0].ModelYear)
+			response.Year = int64(year)
+
+			response.Make = decodeVINOutput.Results[0].Make
+			response.Model = decodeVINOutput.Results[0].Model
+		}
+
+		// Data from NHTSA we need regardless
+		response.VIN = decodeVINOutput.Results[0].VIN
+		response.Trim = decodeVINOutput.Results[0].Trim
+		response.ManufactureCity = decodeVINOutput.Results[0].PlantCity
+		response.ManufactureState = decodeVINOutput.Results[0].PlantState
+		response.ManufactureCountry = decodeVINOutput.Results[0].PlantCountry
 	}
 
 	if strings.TrimSpace(userId) != "" {
@@ -146,28 +184,31 @@ func (h *CarsHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		// public request
-		serviceLogSummary, err := h.carService.GetServiceLogSummary(r.Context(), carId)
-		if err != nil {
-			if errors.Is(err, car.ErrNotFound) {
-				// no existing records found
+
+		if isAutologVehicle {
+			serviceLogSummary, err := h.carService.GetServiceLogSummary(r.Context(), carId)
+			if err != nil {
+				if errors.Is(err, car.ErrNotFound) {
+					// no existing records found
+				}
+				httputil.RespondWithError(w, http.StatusInternalServerError, "")
+				return
 			}
-			httputil.RespondWithError(w, http.StatusInternalServerError, "")
-			return
-		}
 
-		var sls = lookupResponseServiceLogSummary{
-			Services: make(map[string]serviceSummary),
-		}
-
-		for svc, summary := range serviceLogSummary.Services {
-			sls.Services[svc] = serviceSummary{
-				Count:              int64(summary.Count),
-				LastService:        summary.LastService,
-				LastServiceMileage: summary.LastServiceMileage,
+			var sls = lookupResponseServiceLogSummary{
+				Services: make(map[string]serviceSummary),
 			}
-		}
 
-		response.ServiceLogSummary = sls
+			for svc, summary := range serviceLogSummary.Services {
+				sls.Services[svc] = serviceSummary{
+					Count:              int64(summary.Count),
+					LastService:        summary.LastService,
+					LastServiceMileage: summary.LastServiceMileage,
+				}
+			}
+
+			response.ServiceLogSummary = sls
+		}
 	}
 
 	httputil.RespondWithJSON(w, http.StatusOK, response)
