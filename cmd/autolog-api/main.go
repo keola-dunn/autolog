@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/keola-dunn/autolog/cmd/autolog-api/internal/handlers/auth"
 	"github.com/keola-dunn/autolog/cmd/autolog-api/internal/handlers/cars"
 	"github.com/keola-dunn/autolog/internal/calendar"
 	"github.com/keola-dunn/autolog/internal/jwt"
@@ -100,7 +99,7 @@ func main() {
 	// API Handler Creations //
 	///////////////////////////
 
-	authHandler, err := auth.NewAuthHandler(auth.AuthHandlerConfig{
+	authHandler, err := jwt.NewAuthHandler(jwt.AuthHandlerConfig{
 		TokenVerifier: jwtVerifier,
 	})
 	if err != nil {
@@ -167,7 +166,7 @@ func robotsTxt(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User-agent: *\nDisallow: /"))
 }
 
-func newRouter(logger *logger.Logger, authHandler *auth.AuthHandler, carsHandler *cars.CarsHandler) *chi.Mux {
+func newRouter(logger *logger.Logger, authHandler *jwt.AuthHandler, carsHandler *cars.CarsHandler) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(logger.RequestLogger)

@@ -1,4 +1,4 @@
-package auth
+package jwt
 
 import (
 	"errors"
@@ -7,9 +7,23 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/httputil"
-	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 )
+
+type AuthHandler struct {
+	jwtVerifier *TokenVerifier
+}
+
+type AuthHandlerConfig struct {
+	// foundationals/platform
+	TokenVerifier *TokenVerifier
+}
+
+func NewAuthHandler(config AuthHandlerConfig) (*AuthHandler, error) {
+	return &AuthHandler{
+		jwtVerifier: config.TokenVerifier,
+	}, nil
+}
 
 // RequireAuthentication is a middleware that requires the request to be authenticated
 func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler {
@@ -62,7 +76,7 @@ func (a *AuthHandler) RequireTokenAuthentication(next http.Handler) http.Handler
 			return
 		}
 
-		r = r.WithContext(autologjwt.SetClaimsInContext(r.Context(), claims))
+		r = r.WithContext(SetClaimsInContext(r.Context(), claims))
 
 		next.ServeHTTP(w, r)
 	})
@@ -105,7 +119,7 @@ func (a *AuthHandler) OptionalAuthentication(next http.Handler) http.Handler {
 					return
 				}
 
-				r = r.WithContext(autologjwt.SetClaimsInContext(r.Context(), claims))
+				r = r.WithContext(SetClaimsInContext(r.Context(), claims))
 			}
 		}
 

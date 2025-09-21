@@ -6,12 +6,15 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/keola-dunn/autolog/internal/calendar"
+	autologjwt "github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/random"
 	"github.com/keola-dunn/autolog/internal/service/user"
 )
 
 type AuthHandler struct {
+	autologjwt.AuthHandler
+
 	// configs
 	jwtIssuer              string
 	jwtExpiryLengthMinutes int64
