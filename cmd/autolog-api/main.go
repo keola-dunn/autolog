@@ -101,11 +101,7 @@ func main() {
 	///////////////////////////
 
 	authHandler, err := auth.NewAuthHandler(auth.AuthHandlerConfig{
-		CalendarService: calendarSvc,
-		RandomGenerator: randomSvc,
-		Logger:          logger,
-		UserService:     userSvc,
-		TokenVerifier:   jwtVerifier,
+		TokenVerifier: jwtVerifier,
 	})
 	if err != nil {
 		logger.Fatal("failed to create auth handler", err)
