@@ -3,12 +3,15 @@ package image
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"io"
 	"os"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type Image struct {
@@ -48,9 +51,22 @@ func (i *Image) UpdatedAt() time.Time {
 }
 
 func (s *Service) SaveImage(ctx context.Context, i Image) (*Image, error) {
-	imageId, err := s.randomGenerator.RandomUUID()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create image id: %w", err)
+	var imageId string
+	var err error
+	for {
+		imageId, err = s.randomGenerator.RandomUUID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create image id: %w", err)
+		}
+
+		exists, err := s.doesImageIdExist(ctx, imageId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if image id exists: %w", err)
+		}
+
+		if !exists {
+			break
+		}
 	}
 
 	i.id = imageId
@@ -95,4 +111,20 @@ func (s *Service) SaveImage(ctx context.Context, i Image) (*Image, error) {
 	}
 
 	return &i, nil
+}
+
+func (s *Service) doesImageIdExist(ctx context.Context, id string) (bool, error) {
+	query := `SELECT 1 FROM images WHERE id = $1`
+
+	row := s.db.QueryRow(ctx, query, id)
+
+	var result int64
+	err := row.Scan(&result)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if image exists: %w", err)
+	}
+	return true, nil
 }

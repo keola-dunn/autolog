@@ -2,3 +2,4 @@
 .DS_Store
 *.pem
 postgres-data/
+images-data/

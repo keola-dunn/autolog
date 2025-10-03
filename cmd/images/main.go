@@ -14,9 +14,12 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 
+	"github.com/keola-dunn/autolog/cmd/images/internal/handlers/images"
 	"github.com/keola-dunn/autolog/internal/jwt"
 	"github.com/keola-dunn/autolog/internal/logger"
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
+	"github.com/keola-dunn/autolog/internal/random"
+	"github.com/keola-dunn/autolog/internal/service/image"
 )
 
 var environmentConfig struct {
@@ -65,7 +68,7 @@ func main() {
 	defer db.Close()
 	logger.Info("successfully connected to the database!")
 
-	// randomSvc := random.NewService()
+	randomSvc := random.NewService()
 
 	// calendarSvc := calendar.NewService()
 
@@ -79,6 +82,12 @@ func main() {
 	///////////////////////
 	// Service Creations //
 	///////////////////////
+
+	imageSvc := image.NewService(image.ServiceConfig{
+		ImagePrefix:     "images",
+		DB:              db,
+		RandomGenerator: randomSvc,
+	})
 
 	// userSvc := user.NewService(user.ServiceConfig{
 	// 	DB:              db,
@@ -101,8 +110,15 @@ func main() {
 		logger.Fatal("failed to create auth handler", err)
 	}
 
+	imagesHandler, err := images.NewHandler(images.ImagesHandlerConfig{
+		ImageService: imageSvc,
+	})
+	if err != nil {
+		logger.Fatal("failed to create images handler", err)
+	}
+
 	// create router using handlers
-	router := newRouter(logger, authHandler)
+	router := newRouter(logger, authHandler, imagesHandler)
 
 	/////////////////////////////
 	// Server config and start //
@@ -146,7 +162,7 @@ func robotsTxt(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User-agent: *\nDisallow: /"))
 }
 
-func newRouter(logger *logger.Logger, authHandler *jwt.AuthHandler) *chi.Mux {
+func newRouter(logger *logger.Logger, authHandler *jwt.AuthHandler, imageHandler *images.ImagesHandler) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(logger.RequestLogger)
@@ -164,10 +180,10 @@ func newRouter(logger *logger.Logger, authHandler *jwt.AuthHandler) *chi.Mux {
 	router.Route("/v1", func(router chi.Router) {
 		router.Route("/images", func(router chi.Router) {
 			// GET image
-			router.Get("/{id}", nil)
+			router.Get("/{id}", imageHandler.GetImage)
 
 			// POST image(s)
-			router.With(authHandler.RequireTokenAuthentication).Post("/", nil)
+			router.With(authHandler.RequireTokenAuthentication).Post("/", imageHandler.PostImage)
 		})
 	})
 

@@ -1,9 +1,15 @@
 package image
 
 import (
+	"context"
+
 	"github.com/keola-dunn/autolog/internal/platform/postgres"
 	"github.com/keola-dunn/autolog/internal/random"
 )
+
+type ServiceIface interface {
+	SaveImage(context.Context, Image) (*Image, error)
+}
 
 type Service struct {
 	imagePrefix string
