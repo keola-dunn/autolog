@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 # Build the Go application, making sure it's a static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o auth-api ./cmd/auth/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o auth-api ./cmd/auth
 
 # Stage 2: Runner
 FROM alpine:latest AS runner

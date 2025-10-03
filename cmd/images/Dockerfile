@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 # Build the Go application, making sure it's a static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o auth-api ./cmd/auth/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o images-api ./cmd/images
 
 # Stage 2: Runner
 FROM alpine:latest AS runner
@@ -15,7 +15,7 @@ FROM alpine:latest AS runner
 WORKDIR /app
 
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/auth-api .
+COPY --from=builder /app/images-api .
 COPY --from=builder /app/private-key.pem .
 COPY --from=builder /app/public-key.pem .
 
@@ -23,4 +23,4 @@ COPY --from=builder /app/public-key.pem .
 EXPOSE 8080
 
 # Command to run the application
-CMD ["./auth-api"]
+CMD ["./images-api"]

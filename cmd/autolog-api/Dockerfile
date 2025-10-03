@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 # Build the Go application, making sure it's a static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o autolog-api ./cmd/autolog-api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o autolog-api ./cmd/autolog-api
 
 # Stage 2: Runner
 FROM alpine:latest AS runner

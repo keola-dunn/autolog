@@ -28,4 +28,14 @@ services:
     depends_on:
       auth: 
         condition: service_started #https://github.com/compose-spec/compose-spec/blob/main/spec.md
+  images-api:
+    build: 
+      context: .
+      dockerfile: ./cmd/images/Dockerfile
+    ports:
+      - "8082:8080"
+    env_file: "./cmd/images/.env"
+    depends_on:
+      auth: 
+        condition: service_started #https://github.com/compose-spec/compose-spec/blob/main/spec.md
   
